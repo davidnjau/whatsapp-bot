@@ -2,12 +2,15 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { listActiveCarts } from '../modules/shop/carts.js'
 import {
+  catalogueCounts,
   getProduct,
-  listProducts,
+  listCatalogue,
+  publishAllDrafts,
   publishProduct,
   scanInbox,
   setProductStatus,
   updateProduct,
+  type CatalogueFilter,
 } from '../modules/shop/index.js'
 import { listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { requireWebAuth } from './auth.js'
@@ -16,14 +19,25 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireWebAuth)
 
   // --- catalogue ---
-  app.get('/admin/catalogue', async (req, reply) => {
-    const products = await listProducts()
+  const FILTERS: CatalogueFilter[] = ['all', 'needs_review', 'draft', 'published', 'sold']
+  const parseFilter = (q: unknown): CatalogueFilter =>
+    FILTERS.includes(q as CatalogueFilter) ? (q as CatalogueFilter) : 'all'
+
+  async function renderCatalogue(reply: any, filter: CatalogueFilter, extra: Record<string, unknown>) {
+    const [products, counts] = await Promise.all([listCatalogue(filter), catalogueCounts()])
     return reply.view('catalogue.njk', {
       authed: true,
       products,
+      counts,
+      filter,
       scan: null,
-      message: (req.query as any)?.message ?? null,
+      message: null,
+      ...extra,
     })
+  }
+
+  app.get<{ Querystring: { filter?: string; message?: string } }>('/admin/catalogue', async (req, reply) => {
+    return renderCatalogue(reply, parseFilter(req.query.filter), { message: req.query.message ?? null })
   })
 
   app.post('/admin/catalogue/scan', async (_req, reply) => {
@@ -31,33 +45,34 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     try {
       scan = await scanInbox()
     } catch (err) {
-      return reply.view('catalogue.njk', {
-        authed: true,
-        products: await listProducts(),
-        scan: { imported: [], skipped: 0, failed: [{ file: 'inbox', error: (err as Error).message }] },
-        message: null,
-      })
+      scan = { imported: [], skipped: 0, failed: [{ file: 'inbox', error: (err as Error).message }] }
     }
-    return reply.view('catalogue.njk', {
-      authed: true,
-      products: await listProducts(),
-      scan,
-      message: null,
-    })
+    return renderCatalogue(reply, 'all', { scan })
   })
 
-  app.post<{ Params: { id: string } }>('/admin/catalogue/:id', async (req, reply) => {
-    const form = z
-      .object({ title: z.string().default(''), size: z.string().default(''), price: z.string().default('') })
-      .parse(req.body ?? {})
-    const price = form.price ? Number.parseInt(form.price.replace(/[^\d]/g, ''), 10) : NaN
-    await updateProduct(Number(req.params.id), {
-      title: form.title.trim() || null,
-      size: form.size.trim() || null,
-      price_ksh: Number.isFinite(price) && price > 0 ? price : null,
-    })
-    return reply.redirect('/admin/catalogue?message=Saved')
+  app.post('/admin/catalogue/publish-all', async (_req, reply) => {
+    const { published, skipped } = await publishAllDrafts()
+    const message =
+      `Published ${published} dress(es) to Status + shop.` +
+      (skipped ? ` ${skipped} still need a size/price (review them first).` : '')
+    return reply.redirect(`/admin/catalogue?message=${encodeURIComponent(message)}`)
   })
+
+  app.post<{ Params: { id: string }; Querystring: { filter?: string } }>(
+    '/admin/catalogue/:id',
+    async (req, reply) => {
+      const form = z
+        .object({ title: z.string().default(''), size: z.string().default(''), price: z.string().default('') })
+        .parse(req.body ?? {})
+      const price = form.price ? Number.parseInt(form.price.replace(/[^\d]/g, ''), 10) : NaN
+      await updateProduct(Number(req.params.id), {
+        title: form.title.trim() || null,
+        size: form.size.trim() || null,
+        price_ksh: Number.isFinite(price) && price > 0 ? price : null,
+      })
+      return reply.redirect(`/admin/catalogue?filter=${parseFilter(req.query.filter)}&message=Saved`)
+    },
+  )
 
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/publish', async (req, reply) => {
     try {

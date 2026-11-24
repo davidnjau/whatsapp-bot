@@ -1,12 +1,16 @@
 {% extends "layout.njk" %}
 {% block title %}Catalogue — WhatsApp Bot{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between">
+<div class="flex items-center justify-between flex-wrap gap-2">
   <h1 class="text-lg font-semibold">Catalogue</h1>
-  <div class="flex gap-2 items-center">
+  <div class="flex gap-2 items-center flex-wrap">
     <a href="/shop" target="_blank" class="text-sm text-emerald-700 underline">View shop →</a>
     <form method="post" action="/admin/catalogue/scan">
       <button class="text-sm bg-emerald-700 text-white rounded-lg px-3 py-2">Scan inbox</button>
+    </form>
+    <form method="post" action="/admin/catalogue/publish-all"
+          onsubmit="return confirm('Publish all reviewed drafts to WhatsApp Status and the shop?')">
+      <button class="text-sm bg-rose-600 text-white rounded-lg px-3 py-2">Publish all</button>
     </form>
   </div>
 </div>
@@ -15,17 +19,32 @@
 <div class="text-sm bg-emerald-50 text-emerald-900 rounded-lg p-3">
   Imported {{ scan.imported.length }}, skipped {{ scan.skipped }} already-seen file(s).
   {% if scan.failed.length %}
-  <ul class="text-red-700 mt-1">
-    {% for f in scan.failed %}<li>{{ f.file }}: {{ f.error }}</li>{% endfor %}
-  </ul>
+  <ul class="text-red-700 mt-1">{% for f in scan.failed %}<li>{{ f.file }}: {{ f.error }}</li>{% endfor %}</ul>
   {% endif %}
 </div>
 {% endif %}
 
+<div class="flex gap-2 flex-wrap text-sm">
+  {% for f in [
+    { key: 'all', label: 'All' },
+    { key: 'needs_review', label: 'Needs review' },
+    { key: 'draft', label: 'Draft' },
+    { key: 'published', label: 'Published' },
+    { key: 'sold', label: 'Sold' }
+  ] %}
+  <a href="/admin/catalogue?filter={{ f.key }}"
+     class="px-3 py-1 rounded-full border {% if filter == f.key %}bg-emerald-700 text-white border-emerald-700{% else %}bg-white hover:bg-gray-50{% endif %}">
+    {{ f.label }}{% if counts[f.key] %} ({{ counts[f.key] }}){% endif %}
+  </a>
+  {% endfor %}
+</div>
+
 <div class="space-y-3">
   {% for p in products %}
   <div class="bg-white rounded-xl shadow p-3 flex gap-3">
-    <img src="/shop/img/{{ p.id }}" class="w-24 h-24 object-cover rounded-lg" alt="">
+    <a href="/shop/img/{{ p.id }}" target="_blank" title="Click to view full photo" class="shrink-0">
+      <img src="/shop/img/{{ p.id }}" class="w-24 h-24 object-cover rounded-lg hover:ring-2 hover:ring-emerald-500" alt="">
+    </a>
     <div class="flex-1 space-y-2">
       <div class="flex items-center gap-2 text-sm flex-wrap">
         <span class="font-medium">#{{ p.id }}</span>
@@ -36,7 +55,7 @@
         {% if p.needs_review %}<span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-800">needs review</span>{% endif %}
         {% if p.ocr_source %}<span class="text-xs text-gray-400">ocr: {{ p.ocr_source }}</span>{% endif %}
       </div>
-      <form method="post" action="/admin/catalogue/{{ p.id }}" class="flex gap-2 flex-wrap text-sm">
+      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" class="flex gap-2 flex-wrap text-sm">
         <input name="title" value="{{ p.title or '' }}" placeholder="Dress #{{ p.id }}" class="border rounded-lg px-2 py-1 w-36">
         <input name="size" value="{{ p.size or '' }}" placeholder="size" class="border rounded-lg px-2 py-1 w-20">
         <input name="price" value="{{ p.price_ksh or '' }}" placeholder="Ksh" class="border rounded-lg px-2 py-1 w-24">
@@ -68,7 +87,8 @@
   </div>
   {% else %}
   <p class="text-sm text-gray-500 bg-white rounded-xl shadow p-4">
-    Nothing yet — drop photos in the inbox folder and hit <strong>Scan inbox</strong>.
+    {% if filter == 'all' %}Nothing yet — drop photos in the inbox folder and hit <strong>Scan inbox</strong>.
+    {% else %}No products in "{{ filter }}".{% endif %}
   </p>
   {% endfor %}
 </div>

@@ -56,6 +56,62 @@ yet; swap in the Pickup Mtaani STK push later). Each dress is a single piece,
 so a sold dress disappears instantly and a race on the last piece fails the
 second payer cleanly.
 
+## Walkthrough — Admin (shop owner)
+
+1. **Add photos.** Drop dress photos into the inbox folder (the one `INBOX_DIR`
+   points at, e.g. `~/Downloads/dressnation`).
+2. **Scan.** Admin → **Catalogue** → **Scan inbox**. Each new photo is OCR'd
+   (size + price badge) and added as a draft.
+3. **Review.** Use the filter tabs — **Needs review** shows dresses where OCR
+   couldn't read the size or price. Click any photo to open it full-size, read
+   the badge, and type the correct size/price → **Save**.
+4. **Publish.** Click **Publish (status + shop)** on a dress to post it to your
+   WhatsApp Status *and* list it in the online shop. Or hit **Publish all** to
+   publish every reviewed draft at once (they post to Status spaced a few
+   seconds apart so WhatsApp stays happy). Dresses still needing a size/price
+   are skipped and reported.
+5. **Sell.** When a dress sells (online, in chat, or in person) it shows as
+   **Sold** and drops off the shop automatically. Use **Mark sold** /
+   **Back to shop** to do it by hand.
+6. **Fulfil orders.** Admin → **Orders** lists paid orders (newest/unpaid
+   first) with the customer's name, phone, town and delivery choice. For each:
+   **Mark packed** → drop the parcel at Pickup Mtaani → enter the **package
+   code** and hit **Dropped** (this WhatsApps the buyer their tracking code and
+   the 3-day collection reminder) → **Mark collected** when done. **Cancel**
+   puts the dresses back on sale.
+7. **Watch interest.** Admin → **Carts** shows what shoppers have added in the
+   last 7 days, even before they pay.
+
+## Walkthrough — Buyer
+
+**Option A — the website**
+1. Open the shop link (your `APP_BASE_URL` + `/shop`).
+2. Browse dresses, tap one for the full photo, size and price.
+3. **Add to cart**, open the cart, fill in name, phone, town and a Pickup
+   Mtaani delivery option (agent / doorstep / upcountry) + location.
+4. **Continue to payment** → **Pay (simulated)**. You get an order page; the
+   shop is notified and WhatsApps you a confirmation.
+5. Later you receive your Pickup Mtaani package code on WhatsApp to track and
+   collect (within 3 days).
+
+**Option B — entirely on WhatsApp**
+1. Message the shop's WhatsApp number.
+2. Send **"catalogue"** (or "mnauza nini") — the bot replies with the available
+   dresses, each as `#number — SIZE, price`, plus the shop link.
+3. Send **"buy 3"** (or "nataka 3", "#3"). The bot confirms the dress is
+   available and asks for your **town**, then your **delivery option** (reply
+   1/2/3), then the **pickup point / address**.
+4. The bot creates your order and sends a **pay link**. Tap it to pay
+   (simulated) — then it's the same as Option A from step 4.
+5. Send **"cancel"** any time during ordering to stop.
+
+> **Why a link for payment?** True in-chat M-Pesa (an STK push you approve
+> inside WhatsApp) needs the official WhatsApp Business API plus a live M-Pesa
+> integration. This build uses WAHA with simulated payment, so the WhatsApp
+> flow collects the order in chat and hands off to the pay page for the final
+> step. The conversational ordering, availability check, and delivery capture
+> all happen in WhatsApp.
+
 ## Not yet wired (future)
 
 - Real M-Pesa / Pickup Mtaani STK push + payment verification (the spec's

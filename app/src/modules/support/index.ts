@@ -8,11 +8,14 @@ import { startHandoff, setBotPaused } from './handoff.js'
 import { isWithinBusinessHours } from './hours.js'
 import { loadMenu, matchMenuItem, menuList } from './menu.js'
 import { isAngry, parseStaffCommand, wantsHuman } from './triggers.js'
+import { handleShopMessage } from '../shop/chat.js'
 
 export interface InboundDm {
   chatId: string
   body: string
   hasMedia: boolean
+  contactName?: string | null
+  contactPhone?: string | null
 }
 
 // Staff commands typed from the business's own number inside a customer chat.
@@ -40,6 +43,19 @@ export async function handleInboundDm(msg: InboundDm) {
   if (Number(repliesLastHour.rows[0].count) >= config.maxRepliesPerChatPerHour) {
     log.warn({ chatId: msg.chatId }, 'per-chat reply cap reached, staying silent')
     return
+  }
+
+  // Shop ordering takes priority: an active order flow, or a buy/catalogue
+  // intent, is handled here and short-circuits the support bot. Works anytime
+  // (no business-hours gate) so customers can order 24/7.
+  if (!msg.hasMedia) {
+    const handled = await handleShopMessage(
+      msg.chatId,
+      msg.body,
+      msg.contactName ?? null,
+      msg.contactPhone ?? null,
+    )
+    if (handled) return
   }
 
   const menu = await loadMenu()

@@ -56,6 +56,31 @@ export async function createOrder(cartId: string, form: CheckoutForm): Promise<O
   return order
 }
 
+// Single-product order created from the WhatsApp chat flow (no cart).
+export async function createDirectOrder(productId: number, form: CheckoutForm): Promise<Order> {
+  const res = await query<{ price_ksh: number | null; status: string }>(
+    'SELECT price_ksh, status FROM products WHERE id = $1',
+    [productId],
+  )
+  const product = res.rows[0]
+  if (!product || product.status !== 'published') {
+    throw new Error('That dress is no longer available.')
+  }
+  const total = product.price_ksh ?? 0
+  const inserted = await query<Order>(
+    `INSERT INTO orders (customer_name, phone, town, delivery_option, delivery_location, total_ksh)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [form.name, form.phone, form.town, form.deliveryOption, form.deliveryLocation, total],
+  )
+  const order = inserted.rows[0]
+  await query('INSERT INTO order_items (order_id, product_id, price_ksh) VALUES ($1, $2, $3)', [
+    order.id,
+    productId,
+    total,
+  ])
+  return order
+}
+
 export async function getOrder(id: number, accessToken?: string): Promise<Order | null> {
   const res = accessToken
     ? await query<Order>('SELECT * FROM orders WHERE id = $1 AND access_token = $2', [id, accessToken])

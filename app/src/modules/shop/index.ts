@@ -94,6 +94,45 @@ export async function listProducts(status?: string): Promise<Product[]> {
   return res.rows
 }
 
+export type CatalogueFilter = 'all' | 'needs_review' | 'draft' | 'published' | 'sold'
+
+export async function listCatalogue(filter: CatalogueFilter): Promise<Product[]> {
+  const where =
+    filter === 'needs_review'
+      ? `needs_review = true AND status != 'archived'`
+      : filter === 'all'
+        ? `status != 'archived'`
+        : `status = '${filter}'`
+  const res = await query<Product>(`SELECT * FROM products WHERE ${where} ORDER BY id DESC`)
+  return res.rows
+}
+
+export async function catalogueCounts(): Promise<Record<string, number>> {
+  const res = await query<{ metric: string; count: string }>(
+    `SELECT status AS metric, count(*) FROM products WHERE status != 'archived' GROUP BY status
+     UNION ALL SELECT 'needs_review', count(*) FROM products WHERE needs_review = true AND status != 'archived'
+     UNION ALL SELECT 'all', count(*) FROM products WHERE status != 'archived'`,
+  )
+  const counts: Record<string, number> = {}
+  for (const row of res.rows) counts[row.metric] = Number(row.count)
+  return counts
+}
+
+// Publish every draft that has a size and price. Drafts still needing review
+// (missing size/price) are skipped and reported.
+export async function publishAllDrafts(): Promise<{ published: number; skipped: number }> {
+  const drafts = await query<{ id: number }>(
+    `SELECT id FROM products WHERE status = 'draft' AND size IS NOT NULL AND price_ksh IS NOT NULL`,
+  )
+  for (const row of drafts.rows) {
+    await publishProduct(row.id)
+  }
+  const skipped = await query<{ count: string }>(
+    `SELECT count(*) FROM products WHERE status = 'draft' AND (size IS NULL OR price_ksh IS NULL)`,
+  )
+  return { published: drafts.rows.length, skipped: Number(skipped.rows[0].count) }
+}
+
 export async function getProduct(id: number): Promise<Product | null> {
   const res = await query<Product>('SELECT * FROM products WHERE id = $1', [id])
   return res.rows[0] ?? null
