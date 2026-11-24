@@ -1,0 +1,41 @@
+{% extends "shop_layout.njk" %}
+{% block title %}Order #{{ order.id }} — Dress Nation ~254{% endblock %}
+{% block content %}
+<div class="bg-white rounded-2xl shadow p-5 space-y-3">
+  <h1 class="text-xl font-bold text-rose-900">
+    {% if order.status == 'pending_payment' %}Order #{{ order.id }} — awaiting payment
+    {% elif order.status == 'cancelled' %}Order #{{ order.id }} — cancelled
+    {% else %}Asante! 🎉 Order #{{ order.id }} confirmed{% endif %}
+  </h1>
+  <p class="text-sm">
+    Status:
+    <span class="px-2 py-1 rounded-full text-xs font-medium
+      {% if order.status in ['paid', 'packed', 'dropped', 'collected'] %}bg-emerald-100 text-emerald-800
+      {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
+      {% else %}bg-amber-100 text-amber-800{% endif %}">{{ order.status }}</span>
+  </p>
+  <div class="text-sm space-y-1">
+    {% for i in items %}
+    <div class="flex justify-between">
+      <span>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %}</span>
+      <span>Ksh {{ i.price_ksh }}</span>
+    </div>
+    {% endfor %}
+    <div class="flex justify-between font-semibold border-t pt-1"><span>Total</span><span>Ksh {{ order.total_ksh }}</span></div>
+  </div>
+  <p class="text-sm text-gray-600">
+    Delivery: {{ order.delivery_option }} — {{ order.delivery_location }}, {{ order.town }}
+  </p>
+  {% if order.package_code %}
+  <div class="bg-rose-50 rounded-xl p-3 text-sm">
+    📦 Package code: <strong class="font-mono">{{ order.package_code }}</strong><br>
+    Track it on the Pickup Mtaani website. Collect within <strong>3 days</strong> of arrival,
+    and open &amp; check your parcel at the agent before leaving.
+  </div>
+  {% elif order.status in ['paid', 'packed'] %}
+  <p class="text-sm text-gray-600">We'll WhatsApp you the Pickup Mtaani package code once your parcel is dropped off. 🚚</p>
+  {% endif %}
+  <p class="text-xs text-gray-500">Questions? WhatsApp 0725571239 · No refunds / no exchanges.</p>
+</div>
+<a href="/shop" class="inline-block text-sm text-rose-700 underline">← Keep shopping</a>
+{% endblock %}

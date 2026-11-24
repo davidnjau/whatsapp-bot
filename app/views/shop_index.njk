@@ -1,0 +1,27 @@
+{% extends "shop_layout.njk" %}
+{% block content %}
+<h1 class="text-xl font-bold text-rose-900">Available dresses</h1>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+  {% for p in products %}
+  <div class="bg-white rounded-2xl shadow overflow-hidden flex flex-col">
+    <a href="/shop/p/{{ p.id }}">
+      <img src="/shop/img/{{ p.id }}" alt="Dress {{ p.id }}" class="w-full h-56 object-cover" loading="lazy">
+    </a>
+    <div class="p-3 flex-1 flex flex-col gap-1">
+      <p class="font-medium text-sm">{{ p.title or ('Dress #' + p.id) }}</p>
+      <p class="text-sm text-rose-700 font-semibold">
+        {% if p.size %}SIZE {{ p.size }} · {% endif %}Ksh {{ p.price_ksh }}
+      </p>
+      <form method="post" action="/shop/cart/add" class="mt-auto">
+        <input type="hidden" name="productId" value="{{ p.id }}">
+        <button class="w-full bg-rose-600 text-white rounded-xl py-2 text-sm font-medium hover:bg-rose-700">
+          Add to cart
+        </button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="col-span-full text-rose-900/70">No dresses listed right now — check back soon! 💕</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "layout.njk" %}
+{% block title %}Carts — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Active carts (last 7 days)</h1>
+  <a href="/admin/orders" class="text-sm text-emerald-700 underline">Orders →</a>
+</div>
+<div class="bg-white rounded-xl shadow divide-y text-sm">
+  {% for c in carts %}
+  <div class="p-4">
+    <p class="text-xs text-gray-400">{{ c.updated_at }} · cart {{ c.cart_id | truncate(8, true, '') }}…</p>
+    <ul class="mt-1">
+      {% for i in c.items %}
+      <li>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <p class="p-4 text-gray-500">No active carts.</p>
+  {% endfor %}
+</div>
+{% endblock %}

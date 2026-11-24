@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dress Nation ~254{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-rose-50 min-h-screen">
+  <nav class="bg-rose-600 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <a href="/shop" class="font-bold tracking-wide">DRESS NATION ~254 💃</a>
+    <a href="/shop/cart" class="text-sm bg-rose-700 rounded-full px-3 py-1">
+      Cart{% if cartCount %} ({{ cartCount }}){% endif %}
+    </a>
+  </nav>
+  <main class="max-w-4xl mx-auto p-4 space-y-4">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="max-w-4xl mx-auto p-4 text-xs text-rose-900/60 space-y-1">
+    <p>Quality mtumba dresses · Delivery countrywide via Pickup Mtaani 🇰🇪 · WhatsApp 0725571239</p>
+    <p>All items are single pieces, sold as they are — <strong>no refunds, no exchanges</strong>. Delivery fee is separate and confirmed by the shop.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends "shop_layout.njk" %}
+{% block title %}Cart — Dress Nation ~254{% endblock %}
+{% block content %}
+<h1 class="text-xl font-bold text-rose-900">Your cart</h1>
+{% if error %}<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>{% endif %}
+
+{% if items.length %}
+<div class="bg-white rounded-2xl shadow divide-y">
+  {% for p in items %}
+  <div class="p-3 flex items-center gap-3">
+    <img src="/shop/img/{{ p.id }}" class="w-16 h-16 object-cover rounded-lg" alt="">
+    <div class="flex-1">
+      <p class="font-medium text-sm">{{ p.title or ('Dress #' + p.id) }}</p>
+      <p class="text-sm text-rose-700">{% if p.size %}SIZE {{ p.size }} · {% endif %}Ksh {{ p.price_ksh }}</p>
+    </div>
+    <form method="post" action="/shop/cart/remove">
+      <input type="hidden" name="productId" value="{{ p.id }}">
+      <button class="text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1">remove</button>
+    </form>
+  </div>
+  {% endfor %}
+  <div class="p-3 flex justify-between font-semibold">
+    <span>Total (dresses)</span><span>Ksh {{ total }}</span>
+  </div>
+</div>
+
+<form method="post" action="/shop/checkout" class="bg-white rounded-2xl shadow p-4 space-y-3 text-sm">
+  <h2 class="font-semibold">Delivery details</h2>
+  <input name="name" placeholder="Your name" class="w-full border rounded-lg px-3 py-2" required>
+  <input name="phone" placeholder="Phone (07XX… — we'll WhatsApp your package code)" class="w-full border rounded-lg px-3 py-2" required>
+  <input name="town" placeholder="Town / area (e.g. Nairobi, Roysambu)" class="w-full border rounded-lg px-3 py-2" required>
+  <label class="block">
+    Delivery option
+    <select name="deliveryOption" class="mt-1 w-full border rounded-lg px-3 py-2">
+      <option value="agent">Pickup Mtaani agent (cheapest — collect near you)</option>
+      <option value="doorstep">Doorstep (rider to your door)</option>
+      <option value="errand">Upcountry via SACCO/courier (e.g. Easy Coach, 2NK)</option>
+    </select>
+  </label>
+  <input name="deliveryLocation" placeholder="Nearest agent / address / SACCO name" class="w-full border rounded-lg px-3 py-2" required>
+  <p class="text-xs text-gray-500">
+    The delivery fee is separate from the dress price — the shop confirms it on WhatsApp after your order.
+    By paying you agree: <strong>no refunds, no exchanges</strong> (mtumba sold as-is).
+  </p>
+  <button class="w-full bg-rose-600 text-white rounded-xl py-3 font-medium hover:bg-rose-700">Continue to payment</button>
+</form>
+{% else %}
+<p class="text-rose-900/70">Your cart is empty. <a href="/shop" class="underline">Browse dresses →</a></p>
+{% endif %}
+{% endblock %}

@@ -15,6 +15,8 @@ import { adminSupportRoutes } from './admin/support.js'
 import { adminNotifyRoutes } from './admin/notify.js'
 import { adminGroupRoutes } from './admin/groups.js'
 import { adminStatusRoutes } from './admin/status.js'
+import { adminShopRoutes } from './admin/shop.js'
+import { shopRoutes } from './modules/shop/routes.js'
 import { notifyRoutes } from './modules/notify/routes.js'
 
 export function buildApp() {
@@ -40,6 +42,8 @@ export function buildApp() {
   app.register(adminNotifyRoutes)
   app.register(adminGroupRoutes)
   app.register(adminStatusRoutes)
+  app.register(adminShopRoutes)
+  app.register(shopRoutes)
   app.register(notifyRoutes)
 
   app.get('/health', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async () => {

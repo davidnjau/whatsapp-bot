@@ -1,0 +1,28 @@
+{% extends "shop_layout.njk" %}
+{% block title %}{{ product.title or ('Dress #' + product.id) }} — Dress Nation ~254{% endblock %}
+{% block content %}
+<a href="/shop" class="text-sm text-rose-700 underline">← All dresses</a>
+<div class="bg-white rounded-2xl shadow overflow-hidden sm:flex">
+  <img src="/shop/img/{{ product.id }}" alt="Dress {{ product.id }}" class="w-full sm:w-1/2 object-cover">
+  <div class="p-5 space-y-3 flex-1">
+    <h1 class="text-xl font-bold">{{ product.title or ('Dress #' + product.id) }}</h1>
+    <p class="text-lg text-rose-700 font-semibold">
+      {% if product.size %}SIZE {{ product.size }}<br>{% endif %}
+      Ksh {{ product.price_ksh }}
+    </p>
+    {% if product.status == 'sold' %}
+    <p class="inline-block bg-gray-200 text-gray-600 rounded-full px-3 py-1 text-sm font-medium">SOLD 😢</p>
+    {% else %}
+    <form method="post" action="/shop/cart/add">
+      <input type="hidden" name="productId" value="{{ product.id }}">
+      <button class="bg-rose-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-rose-700">Add to cart</button>
+    </form>
+    {% endif %}
+    <div class="text-sm text-gray-600 space-y-1 pt-2 border-t">
+      <p>✨ Quality mtumba — single piece, once sold it's gone.</p>
+      <p>🚚 Delivery countrywide via Pickup Mtaani (fee separate, confirmed by the shop).</p>
+      <p>⚠️ No refunds, no exchanges — want measurements or a condition video first? WhatsApp 0725571239.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "layout.njk" %}
+{% block title %}Orders — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Orders</h1>
+  <a href="/admin/carts" class="text-sm text-emerald-700 underline">Active carts →</a>
+</div>
+{% if message %}<p class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-2">{{ message }}</p>{% endif %}
+
+<div class="space-y-3">
+  {% for o in orders %}
+  <div class="bg-white rounded-xl shadow p-4 text-sm space-y-2">
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <p class="font-medium">#{{ o.id }} · {{ o.customer_name }} · Ksh {{ o.total_ksh }}</p>
+      <span class="px-2 py-1 rounded-full text-xs font-medium
+        {% if o.status in ['paid', 'packed'] %}bg-amber-100 text-amber-800
+        {% elif o.status in ['dropped', 'collected'] %}bg-emerald-100 text-emerald-800
+        {% elif o.status == 'cancelled' %}bg-red-100 text-red-800
+        {% else %}bg-gray-200 text-gray-600{% endif %}">{{ o.status }}</span>
+    </div>
+    <ul class="text-gray-600">
+      {% for i in o.items %}
+      <li>• {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}</li>
+      {% endfor %}
+    </ul>
+    <p class="text-gray-600">
+      📞 {{ o.phone }} · 📍 {{ o.town }} · 🚚 {{ o.delivery_option }} — {{ o.delivery_location }}
+      {% if o.package_code %} · 📦 <span class="font-mono">{{ o.package_code }}</span>{% endif %}
+    </p>
+    <p class="text-xs text-gray-400">{{ o.created_at }}{% if o.paid_at %} · paid {{ o.paid_at }}{% endif %}</p>
+    <div class="flex gap-2 flex-wrap text-xs">
+      {% if o.status == 'paid' %}
+      <form method="post" action="/admin/orders/{{ o.id }}/packed">
+        <button class="border rounded-lg px-3 py-1 hover:bg-gray-50">Mark packed</button>
+      </form>
+      {% endif %}
+      {% if o.status in ['paid', 'packed'] %}
+      <form method="post" action="/admin/orders/{{ o.id }}/dropped" class="flex gap-1">
+        <input name="packageCode" placeholder="Package code" class="border rounded-lg px-2 py-1 w-32" required>
+        <button class="bg-emerald-700 text-white rounded-lg px-3 py-1">Dropped at Pickup Mtaani</button>
+      </form>
+      {% endif %}
+      {% if o.status == 'dropped' %}
+      <form method="post" action="/admin/orders/{{ o.id }}/collected">
+        <button class="border rounded-lg px-3 py-1 hover:bg-gray-50">Mark collected</button>
+      </form>
+      {% endif %}
+      {% if o.status in ['pending_payment', 'paid', 'packed'] %}
+      <form method="post" action="/admin/orders/{{ o.id }}/cancel"
+            onsubmit="return confirm('Cancel this order? Dresses go back on sale.')">
+        <button class="border rounded-lg px-3 py-1 text-red-600 hover:bg-red-50">Cancel</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="text-sm text-gray-500 bg-white rounded-xl shadow p-4">No orders yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

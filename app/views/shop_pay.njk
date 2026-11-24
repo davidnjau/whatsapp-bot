@@ -1,0 +1,31 @@
+{% extends "shop_layout.njk" %}
+{% block title %}Pay — Dress Nation ~254{% endblock %}
+{% block content %}
+<h1 class="text-xl font-bold text-rose-900">Order #{{ order.id }} — payment</h1>
+{% if error %}<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>{% endif %}
+
+<div class="bg-white rounded-2xl shadow p-4 space-y-2 text-sm">
+  {% for i in items %}
+  <div class="flex justify-between">
+    <span>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %}</span>
+    <span>Ksh {{ i.price_ksh }}</span>
+  </div>
+  {% endfor %}
+  <div class="flex justify-between font-semibold border-t pt-2">
+    <span>Total</span><span>Ksh {{ order.total_ksh }}</span>
+  </div>
+  <p class="text-xs text-gray-500">
+    Delivery: {{ order.delivery_option }} — {{ order.delivery_location }}, {{ order.town }}.
+    Delivery fee separate (confirmed by the shop).
+  </p>
+</div>
+
+<form method="post" action="/shop/pay/{{ order.id }}/{{ order.access_token }}"
+      class="bg-white rounded-2xl shadow p-4 space-y-3 text-center">
+  <p class="text-sm text-gray-600">Simulated payment — no real money moves yet.</p>
+  <button class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold hover:bg-emerald-700">
+    📲 Pay Ksh {{ order.total_ksh }} with M-Pesa (simulated)
+  </button>
+  <p class="text-xs text-gray-500">By paying you confirm you understand: no refunds, no exchanges.</p>
+</form>
+{% endblock %}
