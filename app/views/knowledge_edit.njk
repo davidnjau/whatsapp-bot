@@ -1,0 +1,17 @@
+{% extends "layout.njk" %}
+{% block title %}{{ name }} — WhatsApp Bot{% endblock %}
+{% block content %}
+<a href="/admin/knowledge" class="text-sm text-emerald-700 underline">← Knowledge base</a>
+<h1 class="text-lg font-semibold font-mono">{{ name }}</h1>
+{% if saved %}
+<p class="text-sm text-emerald-700 bg-emerald-50 rounded-lg p-2">Saved ✓</p>
+{% endif %}
+{% if error %}
+<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2 whitespace-pre-wrap">{{ error }}</p>
+{% endif %}
+<form method="post" action="/admin/knowledge/{{ name | urlencode }}" class="space-y-3">
+  <textarea name="content" rows="24" spellcheck="false"
+            class="w-full border rounded-xl p-3 font-mono text-sm">{{ content }}</textarea>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Save</button>
+</form>
+{% endblock %}

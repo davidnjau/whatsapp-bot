@@ -1,0 +1,19 @@
+{% extends "layout.njk" %}
+{% block title %}Template — WhatsApp Bot{% endblock %}
+{% block content %}
+<a href="/admin/templates" class="text-sm text-emerald-700 underline">← Templates</a>
+<h1 class="text-lg font-semibold">{{ 'New template' if isNew else name }}</h1>
+{% if error %}
+<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>
+{% endif %}
+<form method="post" action="/admin/templates/{{ 'new' if isNew else name | urlencode }}" class="space-y-3">
+  {% if isNew %}
+  <input name="name" value="{{ name }}" placeholder="template_name (lowercase_with_underscores)"
+         class="w-full border rounded-lg px-3 py-2 font-mono text-sm" required>
+  {% endif %}
+  <textarea name="body" rows="8" placeholder="Hi {{ '{{' }}name{{ '}}' }}, ..."
+            class="w-full border rounded-xl p-3 text-sm">{{ body }}</textarea>
+  <p class="text-xs text-gray-500">Use <span class="font-mono">{{ '{{' }}variable{{ '}}' }}</span> placeholders — they must all be provided when sending.</p>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "layout.njk" %}
+{% block title %}Group — WhatsApp Bot{% endblock %}
+{% block content %}
+<a href="/admin/groups" class="text-sm text-emerald-700 underline">← All groups</a>
+<h1 class="text-lg font-semibold break-all">{{ groupId }}</h1>
+{% if message %}
+<p class="text-sm text-emerald-800 bg-emerald-50 rounded-lg p-2">{{ message }}</p>
+{% endif %}
+
+<div class="bg-white rounded-xl shadow p-4 space-y-3">
+  <h2 class="font-semibold">Settings</h2>
+  <form method="post" action="/admin/groups/{{ groupId | urlencode }}/settings" class="space-y-3 text-sm">
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="welcome_enabled" {% if settings.welcome_enabled %}checked{% endif %}>
+      Welcome new members
+    </label>
+    <textarea name="welcome_text" rows="2" class="w-full border rounded-lg p-2"
+              placeholder="Karibu {{ '{{' }}name{{ '}}' }}! Welcome to the group 🎉">{{ settings.welcome_text or '' }}</textarea>
+
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="moderation_enabled" {% if settings.moderation_enabled %}checked{% endif %}>
+      Keyword auto-replies
+    </label>
+    <textarea name="keyword_replies" rows="4" class="w-full border rounded-lg p-2 font-mono"
+              placeholder="price, bei => See our catalog: ...&#10;mpesa => Till number 123456">{{ settings.keyword_replies_text }}</textarea>
+    <p class="text-xs text-gray-500">One rule per line: <span class="font-mono">keyword1, keyword2 =&gt; reply</span></p>
+
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="flag_links" {% if settings.flag_links %}checked{% endif %}>
+      Flag links posted by non-admins (sends you a WhatsApp alert)
+    </label>
+    <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Save settings</button>
+  </form>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4 space-y-3">
+  <div class="flex items-center justify-between">
+    <h2 class="font-semibold">Invite link</h2>
+    <form method="post" action="/admin/groups/{{ groupId | urlencode }}/invite/revoke">
+      <button class="text-sm border rounded-lg px-3 py-1 hover:bg-gray-50">Revoke</button>
+    </form>
+  </div>
+  <p class="text-sm font-mono break-all">{{ inviteLink or 'Not available (bot must be a group admin).' }}</p>
+</div>
+
+<div class="bg-white rounded-xl shadow p-4 space-y-3">
+  <h2 class="font-semibold">Participants ({{ participants.length }})</h2>
+  <form method="post" action="/admin/groups/{{ groupId | urlencode }}/participants" class="flex gap-2 text-sm">
+    <input type="hidden" name="action" value="add">
+    <input name="phone" placeholder="07XXXXXXXX" class="border rounded-lg px-3 py-2 flex-1">
+    <button class="bg-emerald-700 text-white rounded-lg px-3 py-2">Add</button>
+  </form>
+  <ul class="divide-y text-sm">
+    {% for p in participants %}
+    <li class="py-2 flex items-center justify-between gap-2">
+      <span class="font-mono">+{{ p.phone }}{% if p.isAdmin %} <span class="text-xs text-emerald-700">admin</span>{% endif %}</span>
+      <span class="flex gap-1">
+        {% for action in (['demote'] if p.isAdmin else ['promote']) %}
+        <form method="post" action="/admin/groups/{{ groupId | urlencode }}/participants">
+          <input type="hidden" name="action" value="{{ action }}">
+          <input type="hidden" name="phone" value="{{ p.id }}">
+          <button class="text-xs border rounded px-2 py-1 hover:bg-gray-50">{{ action }}</button>
+        </form>
+        {% endfor %}
+        <form method="post" action="/admin/groups/{{ groupId | urlencode }}/participants">
+          <input type="hidden" name="action" value="remove">
+          <input type="hidden" name="phone" value="{{ p.id }}">
+          <button class="text-xs border rounded px-2 py-1 text-red-600 hover:bg-red-50">remove</button>
+        </form>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+<form method="post" action="/admin/groups/{{ groupId | urlencode }}/leave"
+      onsubmit="return confirm('Leave this group?')">
+  <button class="text-sm text-red-600 border border-red-200 rounded-lg px-3 py-2 hover:bg-red-50">
+    Leave group
+  </button>
+</form>
+{% endblock %}

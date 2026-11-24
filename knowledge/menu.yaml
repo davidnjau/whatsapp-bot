@@ -1,0 +1,43 @@
+greeting: |
+  Karibu! Welcome to [BUSINESS NAME] 👋
+
+fallback: |
+  Sorry, I didn't quite get that. / Samahani, sijaelewa.
+  Reply with a number: / Jibu kwa nambari:
+
+after_hours: |
+  Thanks for your message! We are currently closed (Mon–Sat 08:00–18:00) and
+  will get back to you during business hours.
+  Asante kwa ujumbe wako! Kwa sasa tumefunga — tutakujibu saa za kazi.
+
+media_ack: |
+  Thanks for sending that! A member of our team will take a look shortly.
+  Asante! Mmoja wa timu yetu ataangalia hivi karibuni.
+
+menu:
+  - key: "1"
+    title: "Prices / Bei"
+    keywords: [price, prices, cost, how much, bei, gharama, pesa ngapi, ngapi]
+    reply: |
+      [Fill in your prices here, e.g.:]
+      - Product A: KES 500
+      - Product B: KES 1,200
+
+  - key: "2"
+    title: "Delivery / Usafirishaji"
+    keywords: [delivery, deliver, shipping, send, tuma, usafirishaji, kufikisha, mtumbwi]
+    reply: |
+      [Fill in delivery info, e.g.:]
+      We deliver within Nairobi same-day (KES 200) and countrywide in 1–2 days.
+
+  - key: "3"
+    title: "Location & hours / Mahali na saa"
+    keywords: [location, where, address, hours, open, close, mahali, wapi, saa, mko wapi]
+    reply: |
+      [Fill in your location and hours, e.g.:]
+      We are at [ADDRESS]. Open Mon–Sat 08:00–18:00.
+
+  - key: "0"
+    title: "Talk to a person / Ongea na mtu"
+    keywords: [human, agent, person, staff, someone, mtu, msaada, huduma kwa wateja]
+    handoff: true

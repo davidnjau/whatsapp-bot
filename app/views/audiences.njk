@@ -1,0 +1,34 @@
+{% extends "layout.njk" %}
+{% block title %}Audiences — WhatsApp Bot{% endblock %}
+{% block content %}
+<a href="/admin/status" class="text-sm text-emerald-700 underline">← Status</a>
+<h1 class="text-lg font-semibold">Status audiences</h1>
+<p class="text-sm text-gray-500">Saved contact lists (e.g. "VIP customers") used to limit who sees a status.</p>
+{% if message %}
+<div class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-2">
+  {{ message }}
+  {% if invalid.length %}<p class="text-red-700">Skipped invalid: {{ invalid | join(' · ') }}</p>{% endif %}
+</div>
+{% endif %}
+
+<form method="post" action="/admin/audiences" class="bg-white rounded-xl shadow p-4 space-y-2 text-sm">
+  <input name="name" placeholder="Audience name, e.g. VIP customers" class="w-full border rounded-lg px-3 py-2" required>
+  <textarea name="members" rows="4" class="w-full border rounded-lg p-2 font-mono"
+            placeholder="0712345678,Alice&#10;0798765432"></textarea>
+  <p class="text-xs text-gray-500">One per line: phone[,name]. Adding to an existing name appends members.</p>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Save audience</button>
+</form>
+
+<div class="bg-white rounded-xl shadow divide-y text-sm">
+  {% for a in audiences %}
+  <div class="p-4 flex items-center justify-between">
+    <span>{{ a.name }} <span class="text-gray-500">({{ a.member_count }} contacts)</span></span>
+    <form method="post" action="/admin/audiences/{{ a.id }}/delete" onsubmit="return confirm('Delete audience?')">
+      <button class="text-xs border rounded px-2 py-1 text-red-600 hover:bg-red-50">delete</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="p-4 text-gray-500">No audiences yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+services:
+  waha:
+    # devlikeapro/waha:latest is amd64-only; on ARM hosts (Apple Silicon) set
+    # WAHA_IMAGE=devlikeapro/waha:arm in .env
+    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
+    restart: unless-stopped
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE:-GOWS}
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      WAHA_MEDIA_STORAGE: POSTGRESQL
+      WAHA_MEDIA_POSTGRESQL_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      TZ: ${TZ:-Africa/Nairobi}
+    volumes:
+      - waha_sessions:/app/.sessions
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./knowledge:/app/knowledge
+      - media_data:/app/media
+    ports:
+      # Bound to localhost only — on a VPS, Caddy (on the same host) proxies
+      # HTTPS traffic to it. Nothing else is reachable from outside.
+      - "127.0.0.1:${APP_PORT:-8080}:${APP_PORT:-8080}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      waha:
+        condition: service_started
+
+volumes:
+  waha_sessions:
+  pg_data:
+  media_data:

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}WhatsApp Bot{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <a href="/admin" class="font-semibold">WhatsApp Bot</a>
+      {% if authed %}
+      <a href="/admin/chats" class="text-sm hover:underline">Chats</a>
+      <a href="/admin/knowledge" class="text-sm hover:underline">Knowledge</a>
+      <a href="/admin/groups" class="text-sm hover:underline">Groups</a>
+      <a href="/admin/status" class="text-sm hover:underline">Status</a>
+      <a href="/admin/notify" class="text-sm hover:underline">Notify</a>
+      <a href="/admin/templates" class="text-sm hover:underline">Templates</a>
+      <a href="/admin/contacts" class="text-sm hover:underline">Contacts</a>
+      {% endif %}
+    </div>
+    {% if authed %}
+    <form method="post" action="/admin/logout">
+      <button class="text-sm underline">Log out</button>
+    </form>
+    {% endif %}
+  </nav>
+  <main class="max-w-3xl mx-auto p-4 space-y-4">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

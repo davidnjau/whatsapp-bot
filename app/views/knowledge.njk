@@ -1,0 +1,18 @@
+{% extends "layout.njk" %}
+{% block title %}Knowledge — WhatsApp Bot{% endblock %}
+{% block content %}
+<h1 class="text-lg font-semibold">Knowledge base</h1>
+<p class="text-sm text-gray-500">
+  <code>menu.yaml</code> drives the menu bot; the <code>.md</code> files are the AI assistant's
+  only source of truth.
+</p>
+<div class="bg-white rounded-xl shadow divide-y">
+  {% for f in files %}
+  <a href="/admin/knowledge/{{ f | urlencode }}" class="block p-4 hover:bg-gray-50 font-mono text-sm">
+    {{ f }}
+  </a>
+  {% else %}
+  <p class="p-4 text-sm text-gray-500">No knowledge files found.</p>
+  {% endfor %}
+</div>
+{% endblock %}

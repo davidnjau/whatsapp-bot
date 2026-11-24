@@ -1,0 +1,48 @@
+{% extends "layout.njk" %}
+{% block title %}Contacts — WhatsApp Bot{% endblock %}
+{% block content %}
+<h1 class="text-lg font-semibold">Contacts</h1>
+
+{% if imported != null %}
+<div class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-3">
+  Imported {{ imported }} contact(s).
+  {% if invalid.length %}
+  <p class="text-red-700 mt-1">Skipped {{ invalid.length }} invalid line(s): {{ invalid | join(' · ') }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" action="/admin/contacts/import" class="bg-white rounded-xl shadow p-4 space-y-2">
+  <p class="text-sm font-medium">Import opted-in recipients (CSV)</p>
+  <textarea name="csv" rows="5" class="w-full border rounded-lg p-2 font-mono text-sm"
+            placeholder="phone,name&#10;0712345678,Alice&#10;0798765432,Bob"></textarea>
+  <p class="text-xs text-gray-500">
+    One per line: <span class="font-mono">phone[,name]</span>. Imported numbers are marked opted-in —
+    only import people who agreed to receive messages. Numbers that previously sent STOP keep their opt-out.
+  </p>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-medium">Import</button>
+</form>
+
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-left text-gray-500">
+      <tr class="border-b"><th class="p-3">Phone</th><th class="p-3">Name</th><th class="p-3">Opt-in</th><th class="p-3">Source</th></tr>
+    </thead>
+    <tbody class="divide-y">
+      {% for c in contacts %}
+      <tr>
+        <td class="p-3 font-mono">+{{ c.phone }}</td>
+        <td class="p-3">{{ c.name or '—' }}</td>
+        <td class="p-3">
+          {% if c.opted_in %}<span class="text-emerald-700">✓ in</span>
+          {% else %}<span class="text-red-600">✗ out</span>{% endif %}
+        </td>
+        <td class="p-3 text-gray-500">{{ c.opt_in_source or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="p-4 text-gray-500">No contacts yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

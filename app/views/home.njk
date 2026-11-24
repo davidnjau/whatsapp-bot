@@ -1,0 +1,65 @@
+{% extends "layout.njk" %}
+{% block title %}Dashboard — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-4">
+  <div class="flex items-center justify-between">
+    <h2 class="font-semibold">Session “{{ session }}”</h2>
+    <span class="text-sm px-2 py-1 rounded-full
+      {% if status == 'WORKING' %}bg-emerald-100 text-emerald-800
+      {% elif status == 'SCAN_QR_CODE' %}bg-amber-100 text-amber-800
+      {% else %}bg-red-100 text-red-800{% endif %}">
+      {{ status }}
+    </span>
+  </div>
+  {% if status == 'SCAN_QR_CODE' %}
+  <div class="mt-4 text-center">
+    <img src="/admin/qr.png" alt="QR code" class="mx-auto w-64 max-w-full border rounded-lg">
+    <p class="mt-2 text-sm text-gray-600">
+      WhatsApp → Settings → Linked devices → Link a device, then scan this code.
+      Refresh the page if it expires.
+    </p>
+  </div>
+  {% endif %}
+  <form method="post" action="/admin/session/restart" class="mt-4">
+    <button class="text-sm border rounded-lg px-3 py-2 hover:bg-gray-50">Restart session</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  {% for card in [
+    { label: 'Messages in today', value: today.messagesIn },
+    { label: 'Bot replies today', value: today.replies },
+    { label: 'Notifications today', value: today.notifications },
+    { label: 'Group posts today', value: today.groupPosts },
+    { label: 'Statuses today', value: today.statuses },
+    { label: 'In queue', value: queued }
+  ] %}
+  <div class="bg-white rounded-xl shadow p-4">
+    <p class="text-2xl font-semibold">{{ card.value }}</p>
+    <p class="text-sm text-gray-500">{{ card.label }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="bg-white rounded-xl shadow p-4">
+  <h2 class="font-semibold mb-2">Recent errors</h2>
+  {% if webhookErrors.length or failedSends.length %}
+  <ul class="space-y-2 text-sm">
+    {% for e in webhookErrors %}
+    <li class="border-l-4 border-red-300 pl-2">
+      <span class="text-gray-500">{{ e.received_at }}</span>
+      — webhook <span class="font-mono">{{ e.event_type }}</span>: {{ e.error | truncate(120) }}
+    </li>
+    {% endfor %}
+    {% for s in failedSends %}
+    <li class="border-l-4 border-amber-300 pl-2">
+      <span class="text-gray-500">{{ s.created_at }}</span>
+      — send <span class="font-mono">{{ s.kind }}</span> to {{ s.chat_id }}: {{ (s.error or 'failed') | truncate(120) }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-gray-500">None 🎉</p>
+  {% endif %}
+</div>
+{% endblock %}

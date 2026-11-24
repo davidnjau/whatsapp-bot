@@ -1,0 +1,55 @@
+{% extends "layout.njk" %}
+{% block title %}Notification log — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Notification log</h1>
+  <a href="/admin/notify" class="text-sm text-emerald-700 underline">Send one →</a>
+</div>
+<form method="get" action="/admin/notifications" class="flex gap-2 text-sm">
+  <select name="status" class="border rounded-lg px-2 py-1">
+    <option value="">any status</option>
+    {% for s in ['queued', 'sent', 'delivered', 'read', 'failed', 'skipped_optout'] %}
+    <option value="{{ s }}" {% if filter.status == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <select name="template" class="border rounded-lg px-2 py-1">
+    <option value="">any template</option>
+    {% for t in templates %}
+    <option value="{{ t.name }}" {% if filter.template == t.name %}selected{% endif %}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="border rounded-lg px-3 py-1 hover:bg-gray-50">Filter</button>
+</form>
+<div class="bg-white rounded-xl shadow overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-left text-gray-500">
+      <tr class="border-b">
+        <th class="p-3">When</th><th class="p-3">To</th><th class="p-3">Template</th>
+        <th class="p-3">Status</th><th class="p-3">Scheduled</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y">
+      {% for r in rows %}
+      <tr>
+        <td class="p-3 whitespace-nowrap text-gray-500">{{ r.created_at }}</td>
+        <td class="p-3 font-mono">+{{ r.chat_id.replace('@c.us', '') }}</td>
+        <td class="p-3 font-mono">{{ r.template_name }}</td>
+        <td class="p-3">
+          <span class="px-2 py-1 rounded-full text-xs
+            {% if r.status in ['delivered', 'read', 'sent'] %}bg-emerald-100 text-emerald-800
+            {% elif r.status == 'failed' %}bg-red-100 text-red-800
+            {% elif r.status == 'skipped_optout' %}bg-gray-200 text-gray-600
+            {% else %}bg-amber-100 text-amber-800{% endif %}">
+            {{ r.status or 'queued' }}
+          </span>
+          {% if r.error %}<p class="text-xs text-red-600 mt-1">{{ r.error }}</p>{% endif %}
+        </td>
+        <td class="p-3 whitespace-nowrap text-gray-500">{{ r.scheduled_at or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="p-4 text-gray-500">No notifications yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

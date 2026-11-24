@@ -1,0 +1,23 @@
+{% extends "layout.njk" %}
+{% block title %}Groups — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Groups</h1>
+  <a href="/admin/announcements" class="text-sm bg-emerald-700 text-white rounded-lg px-3 py-2">Announcements</a>
+</div>
+{% if error %}
+<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>
+{% endif %}
+<div class="bg-white rounded-xl shadow divide-y">
+  {% for g in groups %}
+  <a href="/admin/groups/{{ g.id | urlencode }}" class="block p-4 hover:bg-gray-50">
+    <p class="font-medium">{{ g.name }}</p>
+    <p class="text-sm text-gray-500">
+      {{ g.id }}{% if g.participantCount != null %} · {{ g.participantCount }} members{% endif %}
+    </p>
+  </a>
+  {% else %}
+  <p class="p-4 text-sm text-gray-500">No groups found (is the WhatsApp session linked?).</p>
+  {% endfor %}
+</div>
+{% endblock %}

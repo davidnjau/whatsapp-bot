@@ -1,0 +1,68 @@
+{% extends "layout.njk" %}
+{% block title %}Announcements — WhatsApp Bot{% endblock %}
+{% block content %}
+<a href="/admin/groups" class="text-sm text-emerald-700 underline">← Groups</a>
+<h1 class="text-lg font-semibold">Group announcements</h1>
+{% if error %}
+<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>
+{% endif %}
+{% if queued %}
+<p class="text-sm text-emerald-800 bg-emerald-50 rounded-lg p-2">
+  Announcement #{{ queued.id }} {{ 'scheduled' if queued.scheduled else 'queued' }} for {{ queued.count }} group(s) ✓
+</p>
+{% endif %}
+
+<form method="post" action="/admin/announcements" class="bg-white rounded-xl shadow p-4 space-y-3 text-sm">
+  <p class="font-medium">Groups</p>
+  <div class="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+    {% for g in groups %}
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="groupIds" value="{{ g.id }}"> {{ g.name }}
+    </label>
+    {% else %}
+    <p class="text-gray-500">No groups available.</p>
+    {% endfor %}
+  </div>
+  <label class="block">
+    Message
+    <textarea name="text" rows="4" class="mt-1 w-full border rounded-lg p-2" required></textarea>
+  </label>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <label class="block">
+      Attachment URL (optional)
+      <input name="attachmentUrl" placeholder="https://…/photo.jpg" class="mt-1 w-full border rounded-lg px-3 py-2">
+    </label>
+    <label class="block">
+      Attachment type
+      <select name="attachmentType" class="mt-1 w-full border rounded-lg px-3 py-2">
+        <option value="none">none</option>
+        <option value="image">image</option>
+        <option value="file">document</option>
+      </select>
+    </label>
+  </div>
+  <label class="block">
+    Send at (optional — leave empty to send now)
+    <input name="sendAt" type="datetime-local" class="mt-1 w-full border rounded-lg px-3 py-2">
+  </label>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Send announcement</button>
+</form>
+
+<div class="bg-white rounded-xl shadow p-4">
+  <h2 class="font-semibold mb-2">History</h2>
+  <ul class="divide-y text-sm">
+    {% for a in history %}
+    <li class="py-2">
+      <p class="text-gray-500 text-xs">{{ a.created_at }}{% if a.scheduled_at %} · scheduled {{ a.scheduled_at }}{% endif %}</p>
+      <p class="truncate">{{ a.content.text or a.content.caption }}</p>
+      <p class="text-xs text-gray-500">
+        {{ a.group_ids.length }} group(s) —
+        {% for status, count in a.statuses %}{{ status }}: {{ count }} {% endfor %}
+      </p>
+    </li>
+    {% else %}
+    <li class="py-2 text-gray-500">No announcements yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "layout.njk" %}
+{% block title %}Templates — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Message templates</h1>
+  <a href="/admin/templates/new" class="text-sm bg-emerald-700 text-white rounded-lg px-3 py-2">New template</a>
+</div>
+<div class="bg-white rounded-xl shadow divide-y">
+  {% for t in templates %}
+  <a href="/admin/templates/{{ t.name | urlencode }}" class="block p-4 hover:bg-gray-50">
+    <div class="flex items-center justify-between">
+      <p class="font-mono text-sm font-medium">{{ t.name }}</p>
+      <p class="text-xs text-gray-400">
+        {% for v in t.vars %}<span class="font-mono">{{ '{{' }}{{ v }}{{ '}}' }}</span> {% endfor %}
+      </p>
+    </div>
+    <p class="text-sm text-gray-500 truncate">{{ t.body }}</p>
+  </a>
+  {% else %}
+  <p class="p-4 text-sm text-gray-500">No templates.</p>
+  {% endfor %}
+</div>
+{% endblock %}

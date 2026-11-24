@@ -1,0 +1,43 @@
+{% extends "layout.njk" %}
+{% block title %}Send notification — WhatsApp Bot{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-lg font-semibold">Send a notification</h1>
+  <a href="/admin/notifications" class="text-sm text-emerald-700 underline">View log →</a>
+</div>
+{% if error %}
+<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>
+{% endif %}
+{% if result %}
+<div class="text-sm text-emerald-800 bg-emerald-50 rounded-lg p-3">
+  <p class="font-medium">Queued ✓ (notification #{{ result.notificationId }})</p>
+  <p class="mt-1 whitespace-pre-wrap text-gray-700">{{ result.rendered }}</p>
+</div>
+{% endif %}
+<form method="post" action="/admin/notify" class="bg-white rounded-xl shadow p-4 space-y-3">
+  <label class="block text-sm">
+    Phone
+    <input name="phone" value="{{ form.phone or '' }}" placeholder="07XXXXXXXX or 2547XXXXXXXX"
+           class="mt-1 w-full border rounded-lg px-3 py-2" required>
+  </label>
+  <label class="block text-sm">
+    Template
+    <select name="template" class="mt-1 w-full border rounded-lg px-3 py-2">
+      {% for t in templates %}
+      <option value="{{ t.name }}" {% if form.template == t.name %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="block text-sm">
+    Variables (JSON)
+    <textarea name="variables" rows="4" class="mt-1 w-full border rounded-lg px-3 py-2 font-mono text-sm"
+              placeholder='{"name": "Alice", "order_id": "1234"}'>{{ form.variables or '{}' }}</textarea>
+  </label>
+  <label class="block text-sm">
+    Send at (optional — leave empty for now)
+    <input name="sendAt" type="datetime-local" value="{{ form.sendAt or '' }}"
+           class="mt-1 w-full border rounded-lg px-3 py-2">
+  </label>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Queue message</button>
+</form>
+{% endblock %}
