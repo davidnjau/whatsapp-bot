@@ -64,27 +64,10 @@ function matchesSize(p: Product, size: string): boolean {
 const POST_LIMIT = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }
 
 export const shopRoutes: FastifyPluginAsync = async (app) => {
-  app.get<{ Querystring: { size?: string } }>('/shop', async (req, reply) => {
-    const cartId = await getCartId(req)
-    const [all, count] = await Promise.all([
-      listAvailable(cartId ?? ''),
-      cartId ? cartCount(cartId) : Promise.resolve(0),
-    ])
-    const activeSize = req.query.size ?? 'All'
-    const shown = all.filter((p) => matchesSize(p, activeSize)).map(decorate)
-    // The "fitting room" hero spins the dresses the owner starred; if none are
-    // starred yet, fall back to the newest arrivals so it's never empty.
-    const starred = all.filter((p) => p.featured)
-    const fittingRoom = (starred.length ? starred : all).slice(0, 12).map(decorate)
-    return shopView(reply, 'shop_index.njk', {
-      products: shown,
-      total: all.length,
-      activeSize,
-      sizes: ['All', ...sizesOf(all)],
-      featured: fittingRoom.slice(0, 3),
-      fittingRoom,
-      cartCount: count,
-    })
+  // The shop is a single-page app (ported reference design); it loads the
+  // catalogue from /shop/api/catalogue and handles its own hash routes.
+  app.get('/shop', async (_req, reply) => {
+    return reply.view('shop_app.njk', {})
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
