@@ -1,31 +1,28 @@
 {% extends "layout.njk" %}
-{% block title %}Dashboard — WhatsApp Bot{% endblock %}
+{% block title %}Overview — Dress Nation Admin{% endblock %}
 {% block content %}
-<div class="bg-white rounded-xl shadow p-4">
-  <div class="flex items-center justify-between">
-    <h2 class="font-semibold">Session “{{ session }}”</h2>
-    <span class="text-sm px-2 py-1 rounded-full
-      {% if status == 'WORKING' %}bg-emerald-100 text-emerald-800
-      {% elif status == 'SCAN_QR_CODE' %}bg-amber-100 text-amber-800
-      {% else %}bg-red-100 text-red-800{% endif %}">
-      {{ status }}
-    </span>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:28px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Admin</p>
+    <h1 class="e-h1" style="margin:0">Overview</h1>
   </div>
-  {% if status == 'SCAN_QR_CODE' %}
-  <div class="mt-4 text-center">
-    <img src="/admin/qr.png" alt="QR code" class="mx-auto w-64 max-w-full border rounded-lg">
-    <p class="mt-2 text-sm text-gray-600">
-      WhatsApp → Settings → Linked devices → Link a device, then scan this code.
-      Refresh the page if it expires.
-    </p>
-  </div>
-  {% endif %}
-  <form method="post" action="/admin/session/restart" class="mt-4">
-    <button class="text-sm border rounded-lg px-3 py-2 hover:bg-gray-50">Restart session</button>
-  </form>
+  <span class="e-tag" style="border:1px solid var(--ink)
+    {% if status == 'WORKING' %};background:var(--accent);color:#fff;border-color:var(--accent)
+    {% elif status == 'SCAN_QR_CODE' %};background:#f1ebe4{% endif %}">
+    WhatsApp: {{ status }}
+  </span>
 </div>
 
-<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+{% if status == 'SCAN_QR_CODE' %}
+<div class="e-card" style="text-align:center;margin-bottom:24px">
+  <img src="/admin/qr.png" alt="QR code" style="margin:0 auto;width:256px;max-width:100%;border:1px solid var(--line);border-radius:12px">
+  <p class="e-muted" style="margin-top:12px;font-size:14px">
+    WhatsApp → Settings → Linked devices → Link a device, then scan this code. Refresh if it expires.
+  </p>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:28px">
   {% for card in [
     { label: 'Messages in today', value: today.messagesIn },
     { label: 'Bot replies today', value: today.replies },
@@ -34,32 +31,39 @@
     { label: 'Statuses today', value: today.statuses },
     { label: 'In queue', value: queued }
   ] %}
-  <div class="bg-white rounded-xl shadow p-4">
-    <p class="text-2xl font-semibold">{{ card.value }}</p>
-    <p class="text-sm text-gray-500">{{ card.label }}</p>
+  <div class="e-card">
+    <div class="e-eyebrow">{{ card.label }}</div>
+    <div style="font-size:34px;font-weight:500;letter-spacing:-.02em;margin-top:10px">{{ card.value }}</div>
   </div>
   {% endfor %}
 </div>
 
-<div class="bg-white rounded-xl shadow p-4">
-  <h2 class="font-semibold mb-2">Recent errors</h2>
+<div class="e-card" style="margin-bottom:24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <h2 style="margin:0;font-size:20px;font-weight:500">Session “{{ session }}”</h2>
+    <form method="post" action="/admin/session/restart"><button class="e-btn">Restart session</button></form>
+  </div>
+</div>
+
+<div class="e-card">
+  <h2 style="margin:0 0 12px;font-size:20px;font-weight:500">Recent errors</h2>
   {% if webhookErrors.length or failedSends.length %}
-  <ul class="space-y-2 text-sm">
+  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:14px">
     {% for e in webhookErrors %}
-    <li class="border-l-4 border-red-300 pl-2">
-      <span class="text-gray-500">{{ e.received_at }}</span>
-      — webhook <span class="font-mono">{{ e.event_type }}</span>: {{ e.error | truncate(120) }}
+    <li style="border-left:3px solid #c0623f;padding-left:10px">
+      <span class="e-muted">{{ e.received_at }}</span> — webhook
+      <span style="font-family:ui-monospace,monospace">{{ e.event_type }}</span>: {{ e.error | truncate(120) }}
     </li>
     {% endfor %}
     {% for s in failedSends %}
-    <li class="border-l-4 border-amber-300 pl-2">
-      <span class="text-gray-500">{{ s.created_at }}</span>
-      — send <span class="font-mono">{{ s.kind }}</span> to {{ s.chat_id }}: {{ (s.error or 'failed') | truncate(120) }}
+    <li style="border-left:3px solid #b8903a;padding-left:10px">
+      <span class="e-muted">{{ s.created_at }}</span> — send
+      <span style="font-family:ui-monospace,monospace">{{ s.kind }}</span> to {{ s.chat_id }}: {{ (s.error or 'failed') | truncate(120) }}
     </li>
     {% endfor %}
   </ul>
   {% else %}
-  <p class="text-sm text-gray-500">None 🎉</p>
+  <p class="e-muted" style="margin:0;font-size:14px">None 🎉</p>
   {% endif %}
 </div>
 {% endblock %}

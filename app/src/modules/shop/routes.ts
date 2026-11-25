@@ -2,9 +2,11 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { readMediaContent } from '../status/media.js'
 import { addToCart, cartCount, cartExists, cartProducts, createCart, removeFromCart } from './carts.js'
-import { getProduct } from './index.js'
+import { getProduct, type Product } from './index.js'
 import { isHeldByOther, listAvailable, reserveProduct } from './reservations.js'
 import { createOrder, getOrder, orderItems, payOrder } from './orders.js'
+import { formatKsh, productName } from './label.js'
+import { brand } from './brand.js'
 
 const CART_COOKIE = 'cart_id'
 
@@ -31,16 +33,57 @@ async function ensureCartId(req: FastifyRequest, reply: FastifyReply): Promise<s
   return cartId
 }
 
+// Every shop view gets the brand strings.
+function shopView(reply: FastifyReply, template: string, data: Record<string, unknown>) {
+  return reply.view(template, { brand, ...data })
+}
+
+// Attach a display-formatted price + title to a product for the templates.
+function decorate(p: Product) {
+  return { ...p, name: productName(p), priceFmt: formatKsh(p.price_ksh ?? 0) }
+}
+
+// Dress sizes present in the catalogue (splitting "8/10" into 8 and 10).
+function sizesOf(products: Product[]): string[] {
+  const set = new Set<string>()
+  for (const p of products) {
+    for (const s of (p.size ?? '').split('/')) {
+      const t = s.trim()
+      if (/^\d{1,2}$/.test(t)) set.add(t)
+    }
+  }
+  return [...set].sort((a, b) => Number(a) - Number(b))
+}
+
+function matchesSize(p: Product, size: string): boolean {
+  if (size === 'All') return true
+  return (p.size ?? '').split('/').map((s) => s.trim()).includes(size)
+}
+
 const POST_LIMIT = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }
 
 export const shopRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/shop', async (req, reply) => {
+  app.get<{ Querystring: { size?: string } }>('/shop', async (req, reply) => {
     const cartId = await getCartId(req)
-    const [products, count] = await Promise.all([
+    const [all, count] = await Promise.all([
       listAvailable(cartId ?? ''),
       cartId ? cartCount(cartId) : Promise.resolve(0),
     ])
-    return reply.view('shop_index.njk', { products, cartCount: count })
+    const activeSize = req.query.size ?? 'All'
+    const shown = all.filter((p) => matchesSize(p, activeSize)).map(decorate)
+    // The "fitting room" hero spins the dresses the owner starred; if none are
+    // starred yet, fall back to the newest arrivals so it's never empty.
+    const starred = all.filter((p) => p.featured)
+    const fittingRoom = (starred.length ? starred : all).slice(0, 12).map(decorate)
+    return shopView(reply, 'shop_index.njk', {
+      products: shown,
+      total: all.length,
+      activeSize,
+      sizes: ['All', ...sizesOf(all)],
+      featured: fittingRoom.slice(0, 3),
+      fittingRoom,
+      cartCount: count,
+    })
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
@@ -49,10 +92,10 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const count = cartId ? await cartCount(cartId) : 0
     // Drafts/archived dresses aren't public — show a friendly page, not JSON 404.
     if (!product || (product.status !== 'published' && product.status !== 'sold')) {
-      return reply.code(404).view('shop_notfound.njk', { cartCount: count })
+      return reply.code(404).view('shop_notfound.njk', { brand, cartCount: count })
     }
     const heldByOther = isHeldByOther(product, cartId ?? '')
-    return reply.view('shop_product.njk', { product, cartCount: count, heldByOther })
+    return shopView(reply, 'shop_product.njk', { product: decorate(product), cartCount: count, heldByOther })
   })
 
   // Product image (any known product — images are the public catalogue content).
@@ -90,15 +133,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     // Extend the hold on everything still in the cart while they're here.
     const items = cartId ? await cartProducts(cartId) : []
     if (cartId) await Promise.all(items.map((p) => reserveProduct(p.id, cartId)))
-    const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
-    return reply.view('shop_cart.njk', {
-      items,
-      total,
-      cartCount: items.length,
-      error: req.query.taken
-        ? 'Sorry — that dress was just reserved by someone else. Each piece is unique!'
-        : null,
-    })
+    return renderCart(reply, items, req.query.taken ? 'Sorry — that dress was just reserved by someone else. Each piece is unique!' : null)
   })
 
   app.post('/shop/checkout', POST_LIMIT, async (req, reply) => {
@@ -114,23 +149,18 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const cartId = await getCartId(req)
     if (!form.success || !cartId) {
       const items = cartId ? await cartProducts(cartId) : []
-      const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
-      return reply.view('shop_cart.njk', {
+      return renderCart(
+        reply,
         items,
-        total,
-        cartCount: items.length,
-        error: form.success ? 'Your cart session expired — please add the dress again.' : 'Please fill in all fields.',
-      })
+        form.success ? 'Your cart session expired — please add the dress again.' : 'Please fill in all fields.',
+      )
     }
     try {
       const order = await createOrder(cartId, form.data)
       return reply.redirect(`/shop/pay/${order.id}/${order.access_token}`)
     } catch (err) {
       const items = await cartProducts(cartId)
-      const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
-      return reply.view('shop_cart.njk', {
-        items, total, cartCount: items.length, error: (err as Error).message,
-      })
+      return renderCart(reply, items, (err as Error).message)
     }
   })
 
@@ -141,7 +171,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
       return reply.redirect(`/shop/order/${order.id}/${order.access_token}`)
     }
     const items = await orderItems(order.id)
-    return reply.view('shop_pay.njk', { order, items, error: null })
+    return shopView(reply, 'shop_pay.njk', { order, items, totalFmt: formatKsh(order.total_ksh), error: null })
   })
 
   app.post<{ Params: { id: string; token: string } }>(
@@ -154,7 +184,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
         const order = await getOrder(Number(req.params.id), req.params.token)
         if (!order) return reply.callNotFound()
         const items = await orderItems(order.id)
-        return reply.view('shop_pay.njk', { order, items, error: result.reason })
+        return shopView(reply, 'shop_pay.njk', { order, items, totalFmt: formatKsh(order.total_ksh), error: result.reason })
       }
       return reply.redirect(`/shop/order/${result.order.id}/${result.order.access_token}`)
     },
@@ -164,6 +194,23 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const order = await getOrder(Number(req.params.id), req.params.token)
     if (!order) return reply.callNotFound()
     const items = await orderItems(order.id)
-    return reply.view('shop_order.njk', { order, items })
+    return shopView(reply, 'shop_order.njk', { order, items, totalFmt: formatKsh(order.total_ksh) })
   })
+
+  function renderCart(reply: FastifyReply, items: Product[], error: string | null) {
+    const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
+    const waText = items.length
+      ? `Hi ${brand.name}! I would like to order:\n` +
+        items.map((p) => `- ${productName(p)} (size ${p.size ?? '?'})`).join('\n') +
+        `\nTotal: ${formatKsh(total)}`
+      : `Hi ${brand.name}! I would like to see your latest dresses.`
+    return shopView(reply, 'shop_cart.njk', {
+      items: items.map(decorate),
+      total,
+      totalFmt: formatKsh(total),
+      cartCount: items.length,
+      waLink: `https://wa.me/${brand.whatsapp}?text=${encodeURIComponent(waText)}`,
+      error,
+    })
+  }
 }

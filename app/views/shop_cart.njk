@@ -1,50 +1,54 @@
 {% extends "shop_layout.njk" %}
-{% block title %}Cart — Dress Nation ~254{% endblock %}
+{% block title %}Your bag — {{ brand.name }} {{ brand.suffix }}{% endblock %}
 {% block content %}
-<h1 class="text-xl font-bold text-rose-900">Your cart</h1>
-{% if error %}<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>{% endif %}
+<section class="wrap" style="padding:28px 24px 72px" id="bag">
+  <h1 style="font-size:clamp(32px,5vw,44px)">Your <span style="color:var(--accent)">bag</span></h1>
+  {% if error %}<p style="margin-top:12px;color:#7a1f2b;background:#f7ece9;border-radius:10px;padding:12px 14px;font-size:14px">{{ error }}</p>{% endif %}
 
-{% if items.length %}
-<div class="bg-white rounded-2xl shadow divide-y">
-  {% for p in items %}
-  <div class="p-3 flex items-center gap-3">
-    <img src="/shop/img/{{ p.id }}" class="w-16 h-16 object-cover rounded-lg" alt="">
-    <div class="flex-1">
-      <p class="font-medium text-sm">{{ p.title or ('Dress #' + p.id) }}</p>
-      <p class="text-sm text-rose-700">{% if p.size %}SIZE {{ p.size }} · {% endif %}Ksh {{ p.price_ksh }}</p>
+  {% if items.length %}
+  <div style="display:flex;flex-wrap:wrap;gap:32px;margin-top:20px;border:1px solid var(--ink);border-radius:16px;padding:28px">
+    <div style="flex:999 1 420px;min-width:0">
+      {% for p in items %}
+      <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)">
+        <a href="/shop/p/{{ p.id }}" style="width:64px;height:84px;border-radius:10px;overflow:hidden;background:var(--panel);flex:none">
+          <img src="/shop/img/{{ p.id }}" alt="" style="width:100%;height:100%;object-fit:cover">
+        </a>
+        <div style="flex:1 1 auto;min-width:0">
+          <div style="font-size:16px">{{ p.name }}</div>
+          <div class="muted" style="font-size:13px">{% if p.size %}Size {{ p.size }} · {% endif %}{{ p.priceFmt }}</div>
+        </div>
+        <form method="post" action="/shop/cart/remove">
+          <input type="hidden" name="productId" value="{{ p.id }}">
+          <button class="muted" style="background:none;border:0;cursor:pointer;font-size:12px;letter-spacing:.08em;text-transform:uppercase">Remove</button>
+        </form>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:16px">
+        <span>Total ({{ items.length }} item{{ 's' if items.length != 1 }})</span>
+        <span class="pricetag" style="font-size:26px">{{ totalFmt }}</span>
+      </div>
+      <p class="muted" style="margin:8px 0 0;font-size:13px">Delivery fee depends on your town — the shop confirms it. No refunds / no exchanges.</p>
     </div>
-    <form method="post" action="/shop/cart/remove">
-      <input type="hidden" name="productId" value="{{ p.id }}">
-      <button class="text-xs text-red-600 border border-red-200 rounded-lg px-2 py-1">remove</button>
+
+    <form method="post" action="/shop/checkout" style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+      <h3 style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:600">Delivery details</h3>
+      <label class="field"><span>Your name</span><input name="name" required></label>
+      <label class="field"><span>Phone (we'll WhatsApp your tracking code)</span><input name="phone" placeholder="07XX XXX XXX" required></label>
+      <label class="field"><span>Town / area</span><input name="town" placeholder="e.g. Nairobi, Roysambu" required></label>
+      <label class="field"><span>Delivery option</span>
+        <select name="deliveryOption">
+          <option value="agent">Pickup Mtaani agent (cheapest)</option>
+          <option value="doorstep">Doorstep (rider to your door)</option>
+          <option value="errand">Upcountry via SACCO / courier</option>
+        </select>
+      </label>
+      <label class="field"><span>Nearest agent / address / SACCO</span><input name="deliveryLocation" required></label>
+      <button class="btn btn-dark" style="width:100%;padding:16px">Continue to payment</button>
+      {% if waLink %}<a href="{{ waLink }}" class="btn btn-wa" style="width:100%">Or order on WhatsApp</a>{% endif %}
     </form>
   </div>
-  {% endfor %}
-  <div class="p-3 flex justify-between font-semibold">
-    <span>Total (dresses)</span><span>Ksh {{ total }}</span>
-  </div>
-</div>
-
-<form method="post" action="/shop/checkout" class="bg-white rounded-2xl shadow p-4 space-y-3 text-sm">
-  <h2 class="font-semibold">Delivery details</h2>
-  <input name="name" placeholder="Your name" class="w-full border rounded-lg px-3 py-2" required>
-  <input name="phone" placeholder="Phone (07XX… — we'll WhatsApp your package code)" class="w-full border rounded-lg px-3 py-2" required>
-  <input name="town" placeholder="Town / area (e.g. Nairobi, Roysambu)" class="w-full border rounded-lg px-3 py-2" required>
-  <label class="block">
-    Delivery option
-    <select name="deliveryOption" class="mt-1 w-full border rounded-lg px-3 py-2">
-      <option value="agent">Pickup Mtaani agent (cheapest — collect near you)</option>
-      <option value="doorstep">Doorstep (rider to your door)</option>
-      <option value="errand">Upcountry via SACCO/courier (e.g. Easy Coach, 2NK)</option>
-    </select>
-  </label>
-  <input name="deliveryLocation" placeholder="Nearest agent / address / SACCO name" class="w-full border rounded-lg px-3 py-2" required>
-  <p class="text-xs text-gray-500">
-    The delivery fee is separate from the dress price — the shop confirms it on WhatsApp after your order.
-    By paying you agree: <strong>no refunds, no exchanges</strong> (mtumba sold as-is).
-  </p>
-  <button class="w-full bg-rose-600 text-white rounded-xl py-3 font-medium hover:bg-rose-700">Continue to payment</button>
-</form>
-{% else %}
-<p class="text-rose-900/70">Your cart is empty. <a href="/shop" class="underline">Browse dresses →</a></p>
-{% endif %}
+  {% else %}
+  <p class="muted" style="margin-top:16px;font-size:16px">Nothing yet. <a href="/shop#shop" style="color:var(--accent)">Add a dress from the drop →</a></p>
+  {% endif %}
+</section>
 {% endblock %}

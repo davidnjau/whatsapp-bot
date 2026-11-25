@@ -1,32 +1,40 @@
 {% extends "shop_layout.njk" %}
-{% block title %}{{ product.title or ('Dress #' + product.id) }} — Dress Nation ~254{% endblock %}
+{% block title %}{{ product.name }} — {{ brand.name }} {{ brand.suffix }}{% endblock %}
 {% block content %}
-<a href="/shop" class="text-sm text-rose-700 underline">← All dresses</a>
-<div class="bg-white rounded-2xl shadow overflow-hidden sm:flex">
-  <img src="/shop/img/{{ product.id }}" alt="Dress {{ product.id }}" class="w-full sm:w-1/2 object-cover">
-  <div class="p-5 space-y-3 flex-1">
-    <h1 class="text-xl font-bold">{{ product.title or ('Dress #' + product.id) }}</h1>
-    <p class="text-lg text-rose-700 font-semibold">
-      {% if product.size %}SIZE {{ product.size }}<br>{% endif %}
-      Ksh {{ product.price_ksh }}
-    </p>
-    {% if product.status == 'sold' %}
-    <p class="inline-block bg-gray-200 text-gray-600 rounded-full px-3 py-1 text-sm font-medium">SOLD 😢</p>
-    {% elif heldByOther %}
-    <p class="inline-block bg-amber-100 text-amber-800 rounded-full px-3 py-1 text-sm font-medium">
-      Reserved by another shopper — check back in a few minutes ⏳
-    </p>
-    {% else %}
-    <form method="post" action="/shop/cart/add">
-      <input type="hidden" name="productId" value="{{ product.id }}">
-      <button class="bg-rose-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-rose-700">Add to cart (held 3 min)</button>
-    </form>
-    {% endif %}
-    <div class="text-sm text-gray-600 space-y-1 pt-2 border-t">
-      <p>✨ Quality mtumba — single piece, once sold it's gone.</p>
-      <p>🚚 Delivery countrywide via Pickup Mtaani (fee separate, confirmed by the shop).</p>
-      <p>⚠️ No refunds, no exchanges — want measurements or a condition video first? WhatsApp 0725571239.</p>
+<section class="wrap" style="padding:28px 24px 64px">
+  <a href="/shop" class="muted" style="font-size:13px;letter-spacing:.08em;text-transform:uppercase">← The drop</a>
+  <div style="display:flex;flex-wrap:wrap;gap:40px;margin-top:20px">
+    <div style="flex:1 1 360px;min-width:0;border-radius:16px;overflow:hidden;background:var(--panel);aspect-ratio:3/4;position:relative">
+      <img src="/shop/img/{{ product.id }}" alt="{{ product.name }}" style="width:100%;height:100%;object-fit:cover">
+      {% if product.status == 'sold' %}<span class="badge sold" style="font-size:13px">Sold</span>{% endif %}
+    </div>
+    <div style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:18px">
+      <div>
+        <p class="eyebrow">{% if product.size %}Size {{ product.size }}{% else %}Single piece{% endif %}</p>
+        <h1 style="margin-top:10px;font-size:clamp(30px,4vw,44px)">{{ product.name }}</h1>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0">
+        <span>{% if product.size %}Size {{ product.size }}{% else %}One size{% endif %}</span>
+        <span class="pricetag" style="font-size:26px">{{ product.priceFmt }}</span>
+      </div>
+      {% if product.status == 'sold' %}
+      <p class="muted">This one has found a home. <a href="/shop" style="color:var(--accent)">See what's still available →</a></p>
+      {% elif heldByOther %}
+      <p class="muted">Reserved by another shopper right now — check back in a few minutes. ⏳</p>
+      {% else %}
+      <form method="post" action="/shop/cart/add">
+        <input type="hidden" name="productId" value="{{ product.id }}">
+        <button class="btn btn-dark" style="width:100%;padding:16px">Add to bag</button>
+      </form>
+      <p class="muted" style="font-size:13px;margin:0">Held for you for a few minutes once added.</p>
+      {% endif %}
+      <div style="border-top:1px solid var(--line);padding-top:16px;font-size:14px;line-height:1.7" class="muted">
+        <p style="margin:0">✦ Quality mtumba — a single piece, once it's gone it's gone.</p>
+        <p style="margin:6px 0 0">✦ Countrywide delivery via Pickup Mtaani (fee confirmed by the shop).</p>
+        <p style="margin:6px 0 0">✦ No refunds, no exchanges — want measurements first?
+          <a href="https://wa.me/{{ brand.whatsapp }}" style="color:var(--accent)">WhatsApp us</a>.</p>
+      </div>
     </div>
   </div>
-</div>
+</section>
 {% endblock %}

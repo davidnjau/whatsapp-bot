@@ -1,33 +1,37 @@
 {% extends "layout.njk" %}
-{% block title %}Orders — WhatsApp Bot{% endblock %}
+{% block title %}Orders — Dress Nation Admin{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between">
-  <h1 class="text-lg font-semibold">Orders</h1>
-  <a href="/admin/carts" class="text-sm text-emerald-700 underline">Active carts →</a>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
+    <h1 class="e-h1" style="margin:0">Orders</h1>
+  </div>
+  <a href="/admin/carts" class="e-btn">Active carts →</a>
 </div>
-{% if message %}<p class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-2">{{ message }}</p>{% endif %}
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
 
-<div class="space-y-3">
+<div style="display:flex;flex-direction:column;gap:14px">
   {% for o in orders %}
-  <div class="bg-white rounded-xl shadow p-4 text-sm space-y-2">
-    <div class="flex items-center justify-between flex-wrap gap-2">
-      <p class="font-medium">#{{ o.id }} · {{ o.customer_name }} · Ksh {{ o.total_ksh }}</p>
-      <span class="px-2 py-1 rounded-full text-xs font-medium
-        {% if o.status in ['paid', 'packed'] %}bg-amber-100 text-amber-800
-        {% elif o.status in ['dropped', 'collected'] %}bg-emerald-100 text-emerald-800
-        {% elif o.status == 'cancelled' %}bg-red-100 text-red-800
-        {% else %}bg-gray-200 text-gray-600{% endif %}">{{ o.status }}</span>
+  <div class="e-card" style="display:flex;flex-direction:column;gap:12px;font-size:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <span style="font-weight:500">#{{ o.id }} · {{ o.customer_name }} · <span class="pricetag">Ksh {{ o.total_ksh }}</span></span>
+      <span class="e-tag" style="
+        {% if o.status in ['dropped', 'collected'] %}background:var(--accent);color:#fff
+        {% elif o.status in ['paid', 'packed'] %}background:#f1e4cf;color:#6b4e1e
+        {% elif o.status == 'cancelled' %}background:#f3dcd3;color:#7a1f2b
+        {% else %}background:var(--panel);color:var(--muted){% endif %}">{{ o.status | replace('_', ' ') }}</span>
     </div>
-    <ul class="space-y-2">
+
+    <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
       {% for i in o.items %}
-      <li class="flex items-center gap-2 text-gray-700">
-        <a href="/shop/img/{{ i.product_id }}" target="_blank" title="View photo">
-          <img src="/shop/img/{{ i.product_id }}" class="w-10 h-10 object-cover rounded hover:ring-2 hover:ring-emerald-500" alt="">
+      <li style="display:flex;align-items:center;gap:10px">
+        <a href="/shop/img/{{ i.product_id }}" target="_blank" title="View photo" style="flex:none">
+          <img src="/shop/img/{{ i.product_id }}" style="width:40px;height:52px;object-fit:cover;border-radius:6px;background:var(--panel)" alt="">
         </a>
         <span>
-          {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}
+          {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} · size {{ i.size }}{% endif %} — Ksh {{ i.price_ksh }}
           {% if i.conflict_orders.length %}
-          <span class="block text-xs text-red-700 font-medium">
+          <span style="display:block;font-size:12px;color:#7a1f2b;font-weight:500">
             ⚠ Conflict: dress #{{ i.product_id }} also in
             {% for c in i.conflict_orders %}order #{{ c.id }} ({{ c.status }}){% if not loop.last %}, {% endif %}{% endfor %}
           </span>
@@ -36,38 +40,36 @@
       </li>
       {% endfor %}
     </ul>
-    <p class="text-gray-600">
+
+    <p class="e-muted" style="margin:0">
       📞 {{ o.phone }} · 📍 {{ o.town }} · 🚚 {{ o.delivery_option }} — {{ o.delivery_location }}
-      {% if o.package_code %} · 📦 <span class="font-mono">{{ o.package_code }}</span>{% endif %}
+      {% if o.package_code %} · 📦 <span style="font-family:ui-monospace,monospace;color:var(--accent)">{{ o.package_code }}</span>{% endif %}
     </p>
-    <p class="text-xs text-gray-400">{{ o.created_at }}{% if o.paid_at %} · paid {{ o.paid_at }}{% endif %}</p>
-    <div class="flex gap-2 flex-wrap text-xs">
+    <p class="e-muted" style="margin:0;font-size:12px">{{ o.created_at }}{% if o.paid_at %} · paid {{ o.paid_at }}{% endif %}</p>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       {% if o.status == 'paid' %}
-      <form method="post" action="/admin/orders/{{ o.id }}/packed">
-        <button class="border rounded-lg px-3 py-1 hover:bg-gray-50">Mark packed</button>
-      </form>
+      <form method="post" action="/admin/orders/{{ o.id }}/packed"><button class="e-btn">Mark packed</button></form>
       {% endif %}
       {% if o.status in ['paid', 'packed'] %}
-      <form method="post" action="/admin/orders/{{ o.id }}/dropped" class="flex gap-1">
-        <input name="packageCode" placeholder="Package code" class="border rounded-lg px-2 py-1 w-32" required>
-        <button class="bg-emerald-700 text-white rounded-lg px-3 py-1">Dropped at Pickup Mtaani</button>
+      <form method="post" action="/admin/orders/{{ o.id }}/dropped" style="display:flex;gap:6px">
+        <input name="packageCode" placeholder="Package code" class="e-input" style="width:140px" required>
+        <button class="e-btn e-btn-dark">Dropped at Pickup Mtaani</button>
       </form>
       {% endif %}
       {% if o.status == 'dropped' %}
-      <form method="post" action="/admin/orders/{{ o.id }}/collected">
-        <button class="border rounded-lg px-3 py-1 hover:bg-gray-50">Mark collected</button>
-      </form>
+      <form method="post" action="/admin/orders/{{ o.id }}/collected"><button class="e-btn">Mark collected</button></form>
       {% endif %}
       {% if o.status in ['pending_payment', 'paid', 'packed'] %}
       <form method="post" action="/admin/orders/{{ o.id }}/cancel"
             onsubmit="return confirm('Cancel this order? Dresses go back on sale.')">
-        <button class="border rounded-lg px-3 py-1 text-red-600 hover:bg-red-50">Cancel</button>
+        <button class="e-btn" style="color:#7a1f2b;border-color:#d8b4ab">Cancel</button>
       </form>
       {% endif %}
     </div>
   </div>
   {% else %}
-  <p class="text-sm text-gray-500 bg-white rounded-xl shadow p-4">No orders yet.</p>
+  <p class="e-muted e-card" style="font-size:14px">No orders yet.</p>
   {% endfor %}
 </div>
 {% endblock %}

@@ -1,41 +1,43 @@
 {% extends "shop_layout.njk" %}
-{% block title %}Order #{{ order.id }} — Dress Nation ~254{% endblock %}
+{% block title %}Order #{{ order.id }} — {{ brand.name }} {{ brand.suffix }}{% endblock %}
 {% block content %}
-<div class="bg-white rounded-2xl shadow p-5 space-y-3">
-  <h1 class="text-xl font-bold text-rose-900">
-    {% if order.status == 'pending_payment' %}Order #{{ order.id }} — awaiting payment
-    {% elif order.status == 'cancelled' %}Order #{{ order.id }} — cancelled
-    {% else %}Asante! 🎉 Order #{{ order.id }} confirmed{% endif %}
+<section class="wrap" style="padding:28px 24px 72px;max-width:680px">
+  {% set paid = order.status in ['paid', 'packed', 'dropped', 'collected'] %}
+  <p class="eyebrow">Order #{{ order.id }}</p>
+  <h1 style="margin-top:10px;font-size:clamp(30px,4vw,44px)">
+    {% if order.status == 'pending_payment' %}Awaiting <span style="color:var(--accent)">payment</span>
+    {% elif order.status == 'cancelled' %}Order <span style="color:var(--accent)">cancelled</span>
+    {% else %}Asante! <span style="color:var(--accent)">You're sorted.</span>{% endif %}
   </h1>
-  <p class="text-sm">
-    Status:
-    <span class="px-2 py-1 rounded-full text-xs font-medium
-      {% if order.status in ['paid', 'packed', 'dropped', 'collected'] %}bg-emerald-100 text-emerald-800
-      {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
-      {% else %}bg-amber-100 text-amber-800{% endif %}">{{ order.status }}</span>
-  </p>
-  <div class="text-sm space-y-1">
-    {% for i in items %}
-    <div class="flex justify-between">
-      <span>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %}</span>
-      <span>Ksh {{ i.price_ksh }}</span>
+
+  <div style="border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:20px">
+    <span class="size-pill {{ 'on' if paid }}" style="pointer-events:none;min-height:32px;font-size:11px">{{ order.status | replace('_', ' ') }}</span>
+    <div style="margin-top:16px">
+      {% for i in items %}
+      <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <span>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} · size {{ i.size }}{% endif %}</span>
+        <span class="pricetag">Ksh {{ i.price_ksh }}</span>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:16px">
+        <span>Total</span><span class="pricetag" style="font-size:24px">{{ totalFmt }}</span>
+      </div>
     </div>
-    {% endfor %}
-    <div class="flex justify-between font-semibold border-t pt-1"><span>Total</span><span>Ksh {{ order.total_ksh }}</span></div>
+    <p class="muted" style="margin:14px 0 0;font-size:14px">Delivery: {{ order.delivery_option }} — {{ order.delivery_location }}, {{ order.town }}</p>
+
+    {% if order.package_code %}
+    <div class="panel" style="padding:18px;margin-top:18px;font-size:14px;line-height:1.6">
+      📦 Package code: <strong style="font-family:ui-monospace,monospace;color:var(--accent)">{{ order.package_code }}</strong><br>
+      Track it on the Pickup Mtaani site. Collect within <strong>3 days</strong> of arrival, and open & check your parcel at the agent before you leave.
+    </div>
+    {% elif order.status in ['paid', 'packed'] %}
+    <p class="muted" style="margin:14px 0 0;font-size:14px">We'll WhatsApp {{ order.phone }} with your Pickup Mtaani code once your parcel is dropped off. 🚚</p>
+    {% endif %}
   </div>
-  <p class="text-sm text-gray-600">
-    Delivery: {{ order.delivery_option }} — {{ order.delivery_location }}, {{ order.town }}
+
+  <p class="muted" style="margin-top:18px;font-size:13px">
+    Questions? <a href="https://wa.me/{{ brand.whatsapp }}" style="color:var(--accent)">WhatsApp {{ brand.phoneDisplay }}</a> · {{ brand.policyNote }}
   </p>
-  {% if order.package_code %}
-  <div class="bg-rose-50 rounded-xl p-3 text-sm">
-    📦 Package code: <strong class="font-mono">{{ order.package_code }}</strong><br>
-    Track it on the Pickup Mtaani website. Collect within <strong>3 days</strong> of arrival,
-    and open &amp; check your parcel at the agent before leaving.
-  </div>
-  {% elif order.status in ['paid', 'packed'] %}
-  <p class="text-sm text-gray-600">We'll WhatsApp you the Pickup Mtaani package code once your parcel is dropped off. 🚚</p>
-  {% endif %}
-  <p class="text-xs text-gray-500">Questions? WhatsApp 0725571239 · No refunds / no exchanges.</p>
-</div>
-<a href="/shop" class="inline-block text-sm text-rose-700 underline">← Keep shopping</a>
+  <a href="/shop" class="btn" style="margin-top:18px">← Keep shopping</a>
+</section>
 {% endblock %}

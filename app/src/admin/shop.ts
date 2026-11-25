@@ -9,6 +9,7 @@ import {
   publishAllDrafts,
   publishProduct,
   scanInbox,
+  setFeatured,
   setProductStatus,
   updateProduct,
   type CatalogueFilter,
@@ -99,6 +100,15 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
         price_ksh: Number.isFinite(price) && price > 0 ? price : null,
       })
       return reply.redirect(`/admin/catalogue?filter=${parseFilter(req.query.filter)}&message=Saved`)
+    },
+  )
+
+  app.post<{ Params: { id: string }; Querystring: { filter?: string } }>(
+    '/admin/catalogue/:id/featured',
+    async (req, reply) => {
+      const form = z.object({ featured: z.enum(['on', 'off']) }).parse(req.body ?? {})
+      await setFeatured(Number(req.params.id), form.featured === 'on')
+      return reply.redirect(`/admin/catalogue?filter=${parseFilter(req.query.filter)}&message=Fitting room updated`)
     },
   )
 

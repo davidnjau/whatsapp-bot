@@ -17,6 +17,7 @@ export interface Product {
   source_file: string | null
   ocr_source: string | null
   needs_review: boolean
+  featured: boolean
   status: 'draft' | 'published' | 'sold' | 'archived'
   reserved_until: Date | null
   reserved_by: string | null
@@ -158,6 +159,11 @@ export async function updateProduct(
      WHERE id = $1`,
     [id, fields.title, fields.size, fields.price_ksh, needsReview],
   )
+}
+
+// Spin this dress in the shop's "fitting room" hero (or stop).
+export async function setFeatured(id: number, featured: boolean): Promise<void> {
+  await query('UPDATE products SET featured = $2::boolean WHERE id = $1', [id, featured])
 }
 
 // Publish = list in the catalogue + post a WhatsApp Status with the image,
