@@ -84,7 +84,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
 
   // JSON catalogue for the shop front-end (dresses in the reference shape).
   app.get('/shop/api/catalogue', async (_req, reply) => {
-    return reply.send({ dresses: await getCatalogue() })
+    return reply.header('Cache-Control', 'no-store').send({ dresses: await getCatalogue() })
   })
 
   // A single dress (detail view / direct load).
