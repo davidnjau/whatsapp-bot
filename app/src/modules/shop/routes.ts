@@ -16,6 +16,7 @@ import {
 import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
+import { fitAdvice, stylingAdvice } from './advisor.js'
 
 const CART_COOKIE = 'cart_id'
 
@@ -75,7 +76,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
   // The shop is a single-page app (ported reference design); it loads the
   // catalogue from /shop/api/catalogue and handles its own hash routes.
   app.get('/shop', async (_req, reply) => {
-    return reply.view('shop_app.njk', {})
+    return reply.view('shop_app.njk', { wa: brand.whatsapp })
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
@@ -173,6 +174,24 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
         })),
       },
     })
+  })
+
+  // "Will it fit me?" — AI stylist answer for a dress (unavailable if the
+  // worker isn't configured; the UI then points to WhatsApp).
+  app.post<{ Params: { id: string } }>('/shop/api/fit/:id', POST_LIMIT, async (req, reply) => {
+    const { message } = z.object({ message: z.string().min(2).max(500) }).parse(req.body ?? {})
+    const product = await getProduct(Number(req.params.id))
+    if (!product) return reply.code(404).send({ error: 'not found' })
+    const advice = await fitAdvice(product, message)
+    return reply.send(advice ?? { unavailable: true })
+  })
+
+  // "How to style it" — styling advice for a dress.
+  app.get<{ Params: { id: string } }>('/shop/api/style/:id', async (req, reply) => {
+    const product = await getProduct(Number(req.params.id))
+    if (!product) return reply.code(404).send({ error: 'not found' })
+    const advice = await stylingAdvice(product)
+    return reply.send(advice ?? { unavailable: true })
   })
 
   // Live status for a placed order (My orders tracker).

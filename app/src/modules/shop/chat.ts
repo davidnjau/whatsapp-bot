@@ -5,6 +5,7 @@ import { enqueueSend } from '../../queue/index.js'
 import { formatKsh, productName } from './label.js'
 import { detectShopIntent, parseDeliveryOption, type DeliveryOption } from './chat-intent.js'
 import { getProduct } from './index.js'
+import { fitAdvice, stylingAdvice } from './advisor.js'
 import { listAvailable, releaseReservation, reserveProduct } from './reservations.js'
 import { createDirectOrder } from './orders.js'
 
@@ -121,6 +122,31 @@ export async function handleShopMessage(
       return startOrder(chatId, available[0].id)
     }
     await reply(chatId, 'Which dress would you like? Reply with its number, e.g. #21. 🙂')
+    return true
+  }
+
+  if (intent.kind === 'fit') {
+    const product = await getProduct(intent.productId)
+    if (!product) return false
+    const advice = await fitAdvice(product, intent.message)
+    if (!advice) return false // worker not configured → let support/AI handle
+    await reply(
+      chatId,
+      advice.stylist_reply +
+        (advice.recommended_size ? `\n\n👗 Suggested size: ${advice.recommended_size}` : '') +
+        `\n\nReply #${product.id} to reserve it.`,
+    )
+    return true
+  }
+
+  if (intent.kind === 'style') {
+    const product = await getProduct(intent.productId)
+    if (!product) return false
+    const advice = await stylingAdvice(product)
+    if (!advice) return false
+    const lines = ['✨ Styling ideas:', ...advice.styling_tips.map((t) => `• ${t}`)]
+    for (const [occ, tip] of Object.entries(advice.by_occasion)) lines.push(`${occ}: ${tip}`)
+    await reply(chatId, lines.join('\n'))
     return true
   }
 

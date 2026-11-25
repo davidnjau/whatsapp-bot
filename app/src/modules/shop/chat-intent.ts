@@ -2,6 +2,8 @@ export type ShopIntent =
   | { kind: 'catalogue' }
   | { kind: 'buy'; productId: number }
   | { kind: 'reserve_prompt' } // "mine" with no number — ask which dress
+  | { kind: 'fit'; productId: number; message: string } // "will #12 fit me?"
+  | { kind: 'style'; productId: number; message: string } // "how do I style #12?"
   | { kind: 'cancel' }
   | { kind: 'none' }
 
@@ -18,13 +20,39 @@ const MINE = /\bmine\b/i
 // not product ids — pick those products with "#N" instead.
 const MENU_NUMBERS = new Set(['0', '1', '2', '3', '4'])
 
+// Fit / styling questions about a specific dress → route to the AI advisor.
+const FIT = /\b(fit|fits|fitting|size|sizing|measurements?|bust|waist|hips?|height|tall|slim|curvy|uk\s?\d|eu\s?\d|us\s?\d|inafit|itakufit|nitafit)\b/i
+const STYLE = /\b(style|styling|how (do|to) (i|you)? ?wear|pair|match|shoes|heels|accessor|jewel|clutch|handbag|niovae|nivae)\b/i
+
+// Find a dress id referenced in the text (#N, "dress N", or a plausible number).
+function findProductId(t: string): number | null {
+  const hash = t.match(/#\s*(\d{1,6})/)
+  if (hash) return Number.parseInt(hash[1], 10)
+  const dress = t.match(/\bdress\s*#?\s*(\d{1,6})/i)
+  if (dress) return Number.parseInt(dress[1], 10)
+  const num = t.match(/\b(\d{1,6})\b/)
+  if (num && !MENU_NUMBERS.has(num[1])) return Number.parseInt(num[1], 10)
+  return null
+}
+
 export function detectShopIntent(text: string): ShopIntent {
   const t = text.trim()
   if (!t) return { kind: 'none' }
   if (CANCEL.test(t)) return { kind: 'cancel' }
 
+  // An explicit buy verb wins (so "buy #12 size 10" still orders).
   const verb = t.match(BUY_VERB)
   if (verb) return { kind: 'buy', productId: Number.parseInt(verb[1], 10) }
+
+  // Fit / styling questions (before plain number → buy), need a dress id.
+  if (FIT.test(t)) {
+    const id = findProductId(t)
+    if (id) return { kind: 'fit', productId: id, message: t }
+  }
+  if (STYLE.test(t)) {
+    const id = findProductId(t)
+    if (id) return { kind: 'style', productId: id, message: t }
+  }
 
   const hash = t.match(HASH_NUM)
   if (hash) return { kind: 'buy', productId: Number.parseInt(hash[1], 10) }

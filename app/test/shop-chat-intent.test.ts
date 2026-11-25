@@ -38,6 +38,21 @@ describe('detectShopIntent', () => {
     expect(detectShopIntent('STOP')).toEqual({ kind: 'none' })
   })
 
+  it('detects fit questions about a dress', () => {
+    expect(detectShopIntent('will #12 fit me? I am UK 10')).toEqual({ kind: 'fit', productId: 12, message: 'will #12 fit me? I am UK 10' })
+    expect(detectShopIntent("I'm 5'5 curvy, does dress 7 fit")).toMatchObject({ kind: 'fit', productId: 7 })
+  })
+
+  it('detects styling questions about a dress', () => {
+    expect(detectShopIntent('how do I style #9?')).toMatchObject({ kind: 'style', productId: 9 })
+    expect(detectShopIntent('what shoes with #21')).toMatchObject({ kind: 'style', productId: 21 })
+  })
+
+  it('an explicit buy verb still wins over fit/size words', () => {
+    expect(detectShopIntent('buy #12 size 10')).toEqual({ kind: 'buy', productId: 12 })
+    expect(detectShopIntent('order #7')).toEqual({ kind: 'buy', productId: 7 })
+  })
+
   it('ignores normal chatter', () => {
     expect(detectShopIntent('hi there')).toEqual({ kind: 'none' })
     expect(detectShopIntent('')).toEqual({ kind: 'none' })
