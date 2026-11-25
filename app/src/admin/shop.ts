@@ -4,6 +4,7 @@ import { listActiveCarts } from '../modules/shop/carts.js'
 import {
   catalogueCounts,
   getProduct,
+  importProductImage,
   listCatalogue,
   publishAllDrafts,
   publishProduct,
@@ -11,6 +12,7 @@ import {
   setProductStatus,
   updateProduct,
   type CatalogueFilter,
+  type Product,
 } from '../modules/shop/index.js'
 import { listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { requireWebAuth } from './auth.js'
@@ -48,6 +50,32 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
       scan = { imported: [], skipped: 0, failed: [{ file: 'inbox', error: (err as Error).message }] }
     }
     return renderCatalogue(reply, 'all', { scan })
+  })
+
+  // Upload photos straight from the browser — each is OCR'd and added as a
+  // draft, exactly like dropping into the inbox and scanning.
+  app.post('/admin/catalogue/upload', async (req, reply) => {
+    const imported: Product[] = []
+    const failed: Array<{ file: string; error: string }> = []
+    try {
+      for await (const part of req.files()) {
+        const name = part.filename || 'upload.jpg'
+        if (!part.mimetype?.startsWith('image/')) {
+          await part.toBuffer().catch(() => {})
+          failed.push({ file: name, error: 'not an image' })
+          continue
+        }
+        try {
+          const buf = await part.toBuffer()
+          imported.push(await importProductImage(name, part.mimetype, buf, null))
+        } catch (err) {
+          failed.push({ file: name, error: (err as Error).message })
+        }
+      }
+    } catch (err) {
+      failed.push({ file: 'upload', error: (err as Error).message })
+    }
+    return renderCatalogue(reply, 'all', { scan: { imported, skipped: 0, failed } })
   })
 
   app.post('/admin/catalogue/publish-all', async (_req, reply) => {

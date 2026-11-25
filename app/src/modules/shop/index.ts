@@ -42,6 +42,30 @@ export interface ScanResult {
   failed: Array<{ file: string; error: string }>
 }
 
+// OCR one image and create a product (draft, flagged for review when the
+// size/price couldn't be read). `sourceFile` is the filename for inbox scans
+// (used to dedupe re-scans) or null for browser uploads.
+export async function importProductImage(
+  filename: string,
+  mimetype: string,
+  buffer: Buffer,
+  sourceFile: string | null,
+): Promise<Product> {
+  const media = await saveMedia(filename, mimetype, buffer)
+  const info = await extractDressInfo(buffer, mimetype)
+  // DressNation's usual price is Ksh 1,000 — default it when OCR can't read the
+  // price, but still flag for review so the owner confirms.
+  const price = info.price ?? DEFAULT_PRICE_KSH
+  const needsReview = !info.size || info.price == null
+  const inserted = await query<Product>(
+    `INSERT INTO products (size, price_ksh, media_id, source_file, ocr_source, ocr_raw, needs_review)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [info.size, price, media.id, sourceFile, info.source, info.raw.slice(0, 2000), needsReview],
+  )
+  log.info({ filename, size: info.size, price, source: info.source }, 'product imported')
+  return inserted.rows[0]
+}
+
 export async function scanInbox(): Promise<ScanResult> {
   const dir = inboxDir()
   const files = (await readdir(dir)).filter((f) => IMAGE_EXT.test(f) && !f.startsWith('.')).sort()
@@ -56,22 +80,7 @@ export async function scanInbox(): Promise<ScanResult> {
     try {
       const buffer = await readFile(path.join(dir, file))
       const mimetype = MIME[path.extname(file).toLowerCase()] ?? 'image/jpeg'
-      const media = await saveMedia(file, mimetype, buffer)
-      const info = await extractDressInfo(buffer, mimetype)
-      // DressNation's usual price is Ksh 1,000 — default it when OCR can't read
-      // the price, but still flag the product for review so the owner confirms.
-      const price = info.price ?? DEFAULT_PRICE_KSH
-      const needsReview = !info.size || info.price == null
-      const inserted = await query<Product>(
-        `INSERT INTO products (size, price_ksh, media_id, source_file, ocr_source, ocr_raw, needs_review)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [info.size, price, media.id, file, info.source, info.raw.slice(0, 2000), needsReview],
-      )
-      result.imported.push(inserted.rows[0])
-      log.info(
-        { file, size: info.size, price: info.price, source: info.source },
-        'product imported from inbox',
-      )
+      result.imported.push(await importProductImage(file, mimetype, buffer, file))
     } catch (err) {
       result.failed.push({ file, error: (err as Error).message })
       log.error({ file, err: (err as Error).message }, 'inbox import failed')

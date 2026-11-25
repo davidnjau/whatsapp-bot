@@ -28,7 +28,7 @@ export function buildApp() {
 
   app.register(fastifyCookie, { secret: config.sessionSecret })
   app.register(fastifyFormbody)
-  app.register(fastifyMultipart, { limits: { fileSize: 64 * 1024 * 1024 } })
+  app.register(fastifyMultipart, { limits: { fileSize: 64 * 1024 * 1024, files: 50 } })
   // global: false — limits are opted into per route (login, /notify, /health).
   // The WAHA webhook is exempt: it's HMAC-verified and legitimately bursty.
   app.register(fastifyRateLimit, { global: false })

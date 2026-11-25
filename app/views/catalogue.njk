@@ -6,7 +6,7 @@
   <div class="flex gap-2 items-center flex-wrap">
     <a href="/shop" target="_blank" class="text-sm text-emerald-700 underline">View shop →</a>
     <form method="post" action="/admin/catalogue/scan">
-      <button class="text-sm bg-emerald-700 text-white rounded-lg px-3 py-2">Scan inbox</button>
+      <button class="text-sm border rounded-lg px-3 py-2 hover:bg-gray-50">Scan inbox</button>
     </form>
     <form method="post" action="/admin/catalogue/publish-all"
           onsubmit="return confirm('Publish all reviewed drafts to WhatsApp Status and the shop?')">
@@ -14,6 +14,16 @@
     </form>
   </div>
 </div>
+
+<form method="post" action="/admin/catalogue/upload" enctype="multipart/form-data"
+      class="bg-white rounded-xl shadow p-4 flex flex-wrap gap-3 items-center text-sm">
+  <div class="flex-1 min-w-[200px]">
+    <label class="font-medium">Upload dress photos</label>
+    <input type="file" name="photos" accept="image/*" multiple required class="mt-1 block w-full">
+    <p class="text-xs text-gray-500 mt-1">Pick one or many — each is scanned (size &amp; price) and added as a draft automatically.</p>
+  </div>
+  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Upload &amp; scan</button>
+</form>
 {% if message %}<p class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-2">{{ message }}</p>{% endif %}
 {% if scan %}
 <div class="text-sm bg-emerald-50 text-emerald-900 rounded-lg p-3">
