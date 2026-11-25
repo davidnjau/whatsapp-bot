@@ -77,7 +77,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/publish', async (req, reply) => {
     try {
       await publishProduct(Number(req.params.id))
-      return reply.redirect('/admin/catalogue?message=Published — status posted and live in the shop')
+      return reply.redirect('/admin/catalogue?message=Published - status posted and live in the shop')
     } catch (err) {
       return reply.redirect(`/admin/catalogue?message=${encodeURIComponent((err as Error).message)}`)
     }
@@ -116,7 +116,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     const form = z.object({ packageCode: z.string().min(2) }).safeParse(req.body ?? {})
     if (!form.success) return reply.redirect('/admin/orders?message=Package code required')
     await markDropped(Number(req.params.id), form.data.packageCode.trim())
-    return reply.redirect('/admin/orders?message=Marked dropped — customer sent the package code')
+    return reply.redirect('/admin/orders?message=Marked dropped - customer sent the package code')
   })
 
   app.post<{ Params: { id: string } }>('/admin/orders/:id/collected', async (req, reply) => {
@@ -126,6 +126,6 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Params: { id: string } }>('/admin/orders/:id/cancel', async (req, reply) => {
     await setOrderStatus(Number(req.params.id), 'cancelled')
-    return reply.redirect('/admin/orders?message=Cancelled — dresses returned to the catalogue')
+    return reply.redirect('/admin/orders?message=Cancelled - dresses returned to the catalogue')
   })
 }
