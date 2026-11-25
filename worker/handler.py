@@ -106,17 +106,10 @@ def run_qwen(system: str, user: str, img: Image.Image | None = None, max_new_tok
 
 def run_siglip(img: Image.Image) -> list[float]:
     bundle = MANAGER.get("siglip")
-    model, processor = bundle["model"], bundle["processor"]
-    inputs = processor(images=[img], return_tensors="pt").to(DEVICE)
-    dtype = next(model.parameters()).dtype
-    if "pixel_values" in inputs:
-        inputs["pixel_values"] = inputs["pixel_values"].to(dtype)
+    model, preprocess = bundle["model"], bundle["preprocess"]
+    x = preprocess(img).unsqueeze(0).to(DEVICE)
     with torch.no_grad():
-        feats = (
-            model.get_image_features(**inputs)
-            if hasattr(model, "get_image_features")
-            else model(**inputs).image_embeds
-        )
+        feats = model.encode_image(x)
     feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats[0].cpu().float().tolist()
 

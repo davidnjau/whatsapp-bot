@@ -62,17 +62,15 @@ class ModelManager:
         return {"model": model, "processor": processor}
 
     def _load_siglip(self) -> dict:
-        from transformers import AutoModel, AutoProcessor
+        # Marqo's documented path is open_clip (hf-hub), which avoids the
+        # transformers meta-tensor issue with this custom model.
+        import open_clip
 
-        model = (
-            AutoModel.from_pretrained("Marqo/marqo-fashionSigLIP", trust_remote_code=True)
-            .to(DEVICE)
-            .eval()
+        model, preprocess = open_clip.create_model_from_pretrained(
+            "hf-hub:Marqo/marqo-fashionSigLIP"
         )
-        processor = AutoProcessor.from_pretrained(
-            "Marqo/marqo-fashionSigLIP", trust_remote_code=True
-        )
-        return {"model": model, "processor": processor}
+        model.to(DEVICE).eval()
+        return {"model": model, "preprocess": preprocess}
 
     _LOADERS = {"birefnet": "_load_birefnet", "qwen": "_load_qwen", "siglip": "_load_siglip"}
 
