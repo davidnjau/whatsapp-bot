@@ -7,6 +7,7 @@ import { isHeldByOther, listAvailable, reserveProduct } from './reservations.js'
 import { createOrder, getOrder, orderItems, payOrder } from './orders.js'
 import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
+import { getCatalogue, getDress } from './catalogue.js'
 
 const CART_COOKIE = 'cart_id'
 
@@ -98,7 +99,39 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     return shopView(reply, 'shop_product.njk', { product: decorate(product), cartCount: count, heldByOther })
   })
 
-  // Product image (any known product — images are the public catalogue content).
+  // JSON catalogue for the shop front-end (dresses in the reference shape).
+  app.get('/shop/api/catalogue', async (_req, reply) => {
+    return reply.send({ dresses: await getCatalogue() })
+  })
+
+  // A single dress (detail view / direct load).
+  app.get<{ Params: { id: string } }>('/shop/api/dress/:id', async (req, reply) => {
+    const dress = await getDress(Number(req.params.id))
+    if (!dress) return reply.code(404).send({ error: 'not found' })
+    return reply.send(dress)
+  })
+
+  // Gallery image by media-library id (distinct from /shop/img/:productId).
+  app.get<{ Params: { id: string } }>('/shop/media/:id', async (req, reply) => {
+    const media = await readMediaContent(Number(req.params.id))
+    if (!media) return reply.callNotFound()
+    return reply
+      .type(media.item.mimetype ?? 'image/jpeg')
+      .header('Cache-Control', 'public, max-age=86400')
+      .send(media.content)
+  })
+
+  // Gallery video stream (media library id).
+  app.get<{ Params: { id: string } }>('/shop/video/:id', async (req, reply) => {
+    const media = await readMediaContent(Number(req.params.id))
+    if (!media) return reply.callNotFound()
+    return reply
+      .type(media.item.mimetype ?? 'video/mp4')
+      .header('Cache-Control', 'public, max-age=86400')
+      .send(media.content)
+  })
+
+  // Product image: a product's primary photo, or any media-library id directly.
   app.get<{ Params: { id: string } }>('/shop/img/:id', async (req, reply) => {
     const product = await getProduct(Number(req.params.id))
     if (!product) return reply.callNotFound()

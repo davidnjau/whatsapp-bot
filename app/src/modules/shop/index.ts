@@ -18,6 +18,12 @@ export interface Product {
   ocr_source: string | null
   needs_review: boolean
   featured: boolean
+  fabric: string | null
+  colour: string | null
+  length_desc: string | null
+  short_desc: string | null
+  long_desc: string | null
+  care: string | null
   status: 'draft' | 'published' | 'sold' | 'archived'
   reserved_until: Date | null
   reserved_by: string | null
