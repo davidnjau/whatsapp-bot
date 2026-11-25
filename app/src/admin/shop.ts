@@ -17,6 +17,8 @@ import {
   type Product,
 } from '../modules/shop/index.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
+import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
+import { saveMedia } from '../modules/status/media.js'
 import { ingestConfigured } from '../modules/shop/runpod.js'
 import { enqueueIngest } from '../queue/index.js'
 import { requireWebAuth } from './auth.js'
@@ -131,11 +133,43 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     return reply.view('catalogue_edit.njk', {
       authed: true,
       product,
+      media: await listProductMedia(product.id),
       occasionsText: (product.occasions ?? []).join(', '),
       ingestConfigured: ingestConfigured(),
       message: (req.query as any)?.message ?? null,
     })
   })
+
+  // Manually add photos/videos to a product's gallery.
+  app.post<{ Params: { id: string } }>('/admin/catalogue/:id/media/upload', async (req, reply) => {
+    const productId = Number(req.params.id)
+    let added = 0
+    try {
+      for await (const part of req.files()) {
+        const mime = part.mimetype || ''
+        if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
+          await part.toBuffer().catch(() => {})
+          continue
+        }
+        const buf = await part.toBuffer()
+        const media = await saveMedia(part.filename || 'upload', mime, buf)
+        await addProductMedia(productId, media.id, mime.startsWith('video/') ? 'video' : 'photo')
+        added++
+      }
+    } catch {
+      /* ignore partial upload errors; report what landed */
+    }
+    return reply.redirect(`/admin/catalogue/${productId}/edit?message=${encodeURIComponent(`Added ${added} file(s)`)}`)
+  })
+
+  // Delete one gallery item.
+  app.post<{ Params: { id: string; rowId: string } }>(
+    '/admin/catalogue/:id/media/:rowId/delete',
+    async (req, reply) => {
+      await deleteProductMedia(Number(req.params.id), Number(req.params.rowId))
+      return reply.redirect(`/admin/catalogue/${req.params.id}/edit?message=Photo removed`)
+    },
+  )
 
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/details', async (req, reply) => {
     const form = z

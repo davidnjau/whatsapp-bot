@@ -7,7 +7,6 @@
     <h1 class="e-h1" style="margin:0">Dresses</h1>
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <form method="post" action="/admin/catalogue/scan"><button class="e-btn">Scan inbox</button></form>
     <form method="post" action="/admin/catalogue/publish-all"
           onsubmit="return confirm('Publish all reviewed drafts to WhatsApp Status and the shop?')">
       <button class="e-btn e-btn-dark">Publish all</button>
@@ -88,7 +87,7 @@
           </div>
         </div>
       </div>
-      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" class="dn-edit" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input name="title" value="{{ p.title or '' }}" placeholder="Dress #{{ p.id }}" class="e-input" style="flex:1 1 180px;min-width:120px">
         <input name="size" value="{{ p.size or '' }}" placeholder="size" class="e-input" style="width:76px">
         <input name="price" value="{{ p.price_ksh or 1000 }}" placeholder="Ksh" class="e-input" style="width:88px">
@@ -98,7 +97,7 @@
   </div>
   {% else %}
   <p class="e-muted e-card" style="font-size:14px">
-    {% if filter == 'all' %}Nothing yet — upload photos above, or drop them in the inbox folder and hit <strong>Scan inbox</strong>.
+    {% if filter == 'all' %}Nothing yet — upload dress photos above to get started.
     {% else %}No dresses in “{{ filter }}”.{% endif %}
   </p>
   {% endfor %}

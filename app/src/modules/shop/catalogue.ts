@@ -1,4 +1,5 @@
 import { query } from '../../db.js'
+import { deleteMedia } from '../status/media.js'
 import { productName } from './label.js'
 import type { Product } from './index.js'
 
@@ -109,6 +110,46 @@ async function mediaByProduct(ids: number[]): Promise<Map<number, MediaRow[]>> {
 
 export async function getProductMedia(productId: number): Promise<MediaRow[]> {
   return (await mediaByProduct([productId])).get(productId) ?? []
+}
+
+// --- admin: manage a product's gallery media ---
+export interface ProductMediaRow {
+  id: number
+  media_id: number
+  kind: string
+  poster_media_id: number | null
+  position: number
+}
+
+export async function listProductMedia(productId: number): Promise<ProductMediaRow[]> {
+  const res = await query<ProductMediaRow>(
+    'SELECT id, media_id, kind, poster_media_id, position FROM product_media WHERE product_id = $1 ORDER BY position, id',
+    [productId],
+  )
+  return res.rows
+}
+
+// Append a manually-uploaded photo/video to the gallery.
+export async function addProductMedia(productId: number, mediaId: number, kind: string): Promise<void> {
+  await query(
+    `INSERT INTO product_media (product_id, media_id, kind, position)
+     VALUES ($1, $2, $3, COALESCE((SELECT max(position) + 1 FROM product_media WHERE product_id = $1), 100))`,
+    [productId, mediaId, kind],
+  )
+}
+
+// Remove a gallery row; delete the underlying file only if nothing else uses it
+// (not the product's primary photo, not another gallery row).
+export async function deleteProductMedia(productId: number, rowId: number): Promise<void> {
+  const res = await query<{ media_id: number }>(
+    'DELETE FROM product_media WHERE id = $1 AND product_id = $2 RETURNING media_id',
+    [rowId, productId],
+  )
+  const mediaId = res.rows[0]?.media_id
+  if (mediaId == null) return
+  const primary = await query('SELECT 1 FROM products WHERE media_id = $1', [mediaId])
+  const other = await query('SELECT 1 FROM product_media WHERE media_id = $1', [mediaId])
+  if (!primary.rowCount && !other.rowCount) await deleteMedia(mediaId)
 }
 
 // The public catalogue for the shop SPA: published + sold dresses (sold ones

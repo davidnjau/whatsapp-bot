@@ -53,4 +53,43 @@
     </div>
   </form>
 </div>
+
+<div class="e-card" style="margin-top:24px">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+    <h2 style="margin:0;font-size:20px;font-weight:500">Photos &amp; video</h2>
+    <span class="e-muted" style="font-size:13px">{{ media.length }} item(s){% if product.ai_ingested_at %} · includes AI-generated{% endif %}</span>
+  </div>
+
+  <form method="post" action="/admin/catalogue/{{ product.id }}/media/upload" enctype="multipart/form-data"
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 20px">
+    <input type="file" name="files" accept="image/*,video/*" multiple required style="font-size:14px">
+    <button class="e-btn e-btn-olive">Add photos / videos</button>
+    <span class="e-muted" style="font-size:12px">Add your own shots before (or instead of) AI enrichment.</span>
+  </form>
+
+  {% if media.length %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">
+    {% for m in media %}
+    <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)">
+      <div style="aspect-ratio:3/4;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        {% if m.kind == 'video' %}
+        <video src="/shop/video/{{ m.media_id }}"{% if m.poster_media_id %} poster="/shop/media/{{ m.poster_media_id }}"{% endif %} muted playsinline controls style="width:100%;height:100%;object-fit:cover"></video>
+        {% else %}
+        <img src="/shop/media/{{ m.media_id }}" alt="" style="width:100%;height:100%;object-fit:cover">
+        {% endif %}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;font-size:12px">
+        <span class="e-muted" style="text-transform:capitalize">{{ m.kind }}</span>
+        <form method="post" action="/admin/catalogue/{{ product.id }}/media/{{ m.id }}/delete"
+              onsubmit="return confirm('Delete this {{ m.kind }}?')">
+          <button class="danger" style="border:0;background:none;cursor:pointer;color:#7a1f2b;font:500 12px Inter,sans-serif">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="e-muted" style="font-size:14px;margin:0">No gallery media yet. Upload photos/videos above, or run AI enrichment to generate a cutout + studio shot.</p>
+  {% endif %}
+</div>
 {% endblock %}
