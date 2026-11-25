@@ -25,9 +25,16 @@ const app=document.getElementById('app');
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200)}
 function badge(bump){const b=document.getElementById('badge');b.textContent=S.bag.length||'';if(bump){b.classList.remove('bump');void b.offsetWidth;b.classList.add('bump')}}
 
-function addToBag(id,fromEl){
+async function addToBag(id,fromEl){
   if(isSold(id)||inBag(id))return;
-  S.bag.push(id);persist();
+  let r;
+  try{r=await fetch('/shop/api/cart/add',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:id})}).then(x=>x.json());}
+  catch(e){toast('Could not reach the shop — please try again');return;}
+  if(!r.ok){
+    if(r.taken){S.sold.push(id);persist();toast('Sorry — that one was just reserved. Each piece is unique.');route==='shop'?refreshShop():render();}
+    return;
+  }
+  S.bag=r.ids;persist();
   const target=document.getElementById('bagLink').getBoundingClientRect();
   const img=fromEl&&fromEl.querySelector('img');
   if(img&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
@@ -192,10 +199,16 @@ function payment(){
    <button class="btn primary block" data-till style="margin-top:16px">Confirm payment</button></div>`}`}
   ${summaryBox()}</div>`;
 }
-function placeOrder(method){
-  const t=totals();
-  const o={id:'DN-'+(1040+S.orders.length+Math.floor(Math.random()*9)),items:[...S.bag],name:S.form.name.trim(),phone:S.form.phone.trim(),del:t.del.t,area:S.form.area,total:t.total,method,status:0,at:Date.now()};
-  S.orders.unshift(o);S.sold.push(...S.bag);S.bag=[];S.pay.state='done';persist();badge();render();
+async function placeOrder(method){
+  let res;
+  try{res=await fetch('/shop/api/order',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({name:S.form.name.trim(),phone:S.form.phone.trim(),del:S.form.del,area:S.form.area,method})}).then(r=>r.json());}
+  catch(e){S.pay.state='idle';toast('Could not reach the shop — please try again');render();return;}
+  if(!res||res.error){S.pay.state='idle';toast((res&&res.error)||'Something went wrong — please try again');
+    try{S.bag=await fetch('/shop/api/cart').then(r=>r.json()).then(d=>d.ids);}catch(e){}persist();badge();render();return;}
+  const o=res.order;
+  S.orders.unshift({id:o.dn,ref:{id:o.id,token:o.token},items:o.items.map(i=>i.id),name:o.name,phone:o.phone,del:o.del,total:o.total,method:o.method,status:o.status,at:Date.now()});
+  S.sold.push(...o.items.map(i=>i.id));S.bag=[];S.pay.state='done';persist();badge();render();
 }
 
 /* ---------- ORDERS ---------- */
@@ -310,8 +323,23 @@ function onHash(){
   if(changed)scrollTo({top:0,behavior:'instant'});
   render();
   if(h==='drop'){const el=document.getElementById('drop');if(el)el.scrollIntoView({behavior:'instant'})}
+  if(route==='orders')refreshOrders();
 }
 addEventListener('hashchange',onHash);
+// Pull live status for placed orders so the tracker reflects the shop's admin.
+let ordersRefreshing=false;
+async function refreshOrders(){
+  if(ordersRefreshing||!S.orders.length)return;ordersRefreshing=true;
+  try{
+    await Promise.all(S.orders.map(async o=>{
+      if(!o.ref)return;
+      try{const s=await fetch('/shop/api/order/'+o.ref.id+'/'+o.ref.token).then(r=>r.ok?r.json():null);
+        if(s)o.status=s.status;}catch(e){}
+    }));
+    persist();
+  }finally{ordersRefreshing=false;}
+  if(route==='orders')render();
+}
 
 app.addEventListener('click',e=>{
   const t=e.target.closest('button,a');if(!t)return;const ds=t.dataset;
@@ -322,7 +350,8 @@ app.addEventListener('click',e=>{
   else if(ds.tryon){const i=+ds.tryon;S.cur=i;ringTarget=i;ringPos=i;location.hash='shop'}
   else if(ds.g){showMedia(S.gi+ +ds.g)}
   else if(ds.gi){showMedia(+ds.gi)}
-  else if(ds.remove){S.bag=S.bag.filter(x=>x!==+ds.remove);persist();badge();render()}
+  else if(ds.remove){const pid=+ds.remove;S.bag=S.bag.filter(x=>x!==pid);persist();badge();render();
+    fetch('/shop/api/cart/remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:pid})}).catch(()=>{});}
   else if(ds.del){S.form.del=ds.del;render()}
   else if(ds.pm){S.pay.mode=ds.pm;render()}
   else if(ds.stk!==undefined){S.pay.state='waiting';render();setTimeout(()=>{if(S.pay.state==='waiting'&&route==='payment')placeOrder('stk')},3800)}
@@ -361,7 +390,10 @@ async function loadCatalogue(){
     }
   }catch(e){ /* leave DRESSES empty; views show their empty states */ }
   N=DRESSES.length;  // the ring math (wrapd/near/drawRing) needs the real count
-  // Drop any bagged/sold ids that are no longer in the catalogue.
+  // The server cart (cookie-backed) is the source of truth for the bag so holds
+  // survive reloads and match the reservations.
+  try{S.bag=await fetch('/shop/api/cart').then(r=>r.json()).then(d=>d.ids);}catch(e){}
+  // Drop any sold ids that are no longer in the catalogue.
   const ids=new Set(DRESSES.map(d=>d.id));
   S.bag=S.bag.filter(id=>ids.has(id));
   S.sold=S.sold.filter(id=>ids.has(id));

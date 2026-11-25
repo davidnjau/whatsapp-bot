@@ -4,7 +4,15 @@ import { readMediaContent } from '../status/media.js'
 import { addToCart, cartCount, cartExists, cartProducts, createCart, removeFromCart } from './carts.js'
 import { getProduct, type Product } from './index.js'
 import { isHeldByOther, listAvailable, reserveProduct } from './reservations.js'
-import { createOrder, getOrder, orderItems, payOrder } from './orders.js'
+import {
+  createOrder,
+  createShopOrder,
+  dnCode,
+  getOrder,
+  orderItems,
+  payOrder,
+  statusIndex,
+} from './orders.js'
 import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
@@ -92,6 +100,95 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const dress = await getDress(Number(req.params.id))
     if (!dress) return reply.code(404).send({ error: 'not found' })
     return reply.send(dress)
+  })
+
+  // --- shop SPA cart + orders (real reservations / orders / WhatsApp) ---
+
+  // Current bag: product ids still held by this browser's cart (holds extended).
+  app.get('/shop/api/cart', async (req, reply) => {
+    const cartId = await getCartId(req)
+    const items = cartId ? await cartProducts(cartId) : []
+    if (cartId) await Promise.all(items.map((p) => reserveProduct(p.id, cartId)))
+    return reply.header('Cache-Control', 'no-store').send({ ids: items.map((p) => p.id) })
+  })
+
+  app.post('/shop/api/cart/add', POST_LIMIT, async (req, reply) => {
+    const { productId } = z.object({ productId: z.coerce.number() }).parse(req.body ?? {})
+    const product = await getProduct(productId)
+    if (product?.status !== 'published') return reply.send({ ok: false, taken: true, ids: [] })
+    const cartId = await ensureCartId(req, reply)
+    const held = await addToCart(cartId, productId)
+    const ids = (await cartProducts(cartId)).map((p) => p.id)
+    return reply.send({ ok: held, taken: !held, ids })
+  })
+
+  app.post('/shop/api/cart/remove', POST_LIMIT, async (req, reply) => {
+    const { productId } = z.object({ productId: z.coerce.number() }).parse(req.body ?? {})
+    const cartId = await getCartId(req)
+    if (cartId) await removeFromCart(cartId, productId)
+    const ids = cartId ? (await cartProducts(cartId)).map((p) => p.id) : []
+    return reply.send({ ids })
+  })
+
+  // Place + pay for an order (payment simulated; marks dresses sold and sends
+  // the WhatsApp confirmation via the existing order pipeline).
+  app.post('/shop/api/order', POST_LIMIT, async (req, reply) => {
+    const form = z
+      .object({
+        name: z.string().min(2),
+        phone: z.string().min(9),
+        del: z.enum(['pickup', 'nairobi', 'country']),
+        area: z.string().default(''),
+        method: z.enum(['stk', 'till']).default('stk'),
+      })
+      .safeParse(req.body ?? {})
+    if (!form.success) return reply.send({ error: 'Please check your details and try again.' })
+    const cartId = await getCartId(req)
+    if (!cartId) return reply.send({ error: 'Your bag is empty.' })
+    let order
+    try {
+      order = await createShopOrder(cartId, form.data)
+    } catch (err) {
+      return reply.send({ error: (err as Error).message })
+    }
+    const result = await payOrder(order.id, order.access_token, cartId)
+    if (!result.ok) return reply.send({ error: result.reason })
+    const items = await orderItems(result.order.id)
+    return reply.send({
+      order: {
+        id: result.order.id,
+        token: result.order.access_token,
+        dn: dnCode(result.order.id),
+        status: statusIndex(result.order.status),
+        total: result.order.total_ksh,
+        name: result.order.customer_name,
+        phone: result.order.phone,
+        del: result.order.delivery_option,
+        method: form.data.method,
+        items: items.map((i) => ({
+          id: i.product_id,
+          name: i.title ?? `Dress #${i.product_id}`,
+          size: i.size,
+          price: i.price_ksh,
+        })),
+      },
+    })
+  })
+
+  // Live status for a placed order (My orders tracker).
+  app.get<{ Params: { id: string; token: string } }>('/shop/api/order/:id/:token', async (req, reply) => {
+    const order = await getOrder(Number(req.params.id), req.params.token)
+    if (!order) return reply.code(404).send({ error: 'not found' })
+    const items = await orderItems(order.id)
+    return reply.header('Cache-Control', 'no-store').send({
+      dn: dnCode(order.id),
+      status: statusIndex(order.status),
+      rawStatus: order.status,
+      total: order.total_ksh,
+      del: order.delivery_option,
+      items: items.map((i) => i.product_id),
+      at: order.created_at,
+    })
   })
 
   // Gallery image by media-library id (distinct from /shop/img/:productId).

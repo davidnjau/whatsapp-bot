@@ -56,6 +56,55 @@ export async function createOrder(cartId: string, form: CheckoutForm): Promise<O
   return order
 }
 
+// Delivery options the shop SPA offers (keep in sync with the front-end).
+export const SHOP_DELIVERY: Record<string, { label: string; fee: number }> = {
+  pickup: { label: 'Pick up in Nairobi', fee: 0 },
+  nairobi: { label: 'Delivery within Nairobi', fee: 200 },
+  country: { label: 'Countrywide delivery', fee: 350 },
+}
+
+export interface ShopCheckout {
+  name: string
+  phone: string
+  del: string
+  area: string
+}
+
+// Order placed from the shop SPA: total includes the delivery fee, and the
+// delivery choice is stored as a readable label for the admin/WhatsApp.
+export async function createShopOrder(cartId: string, form: ShopCheckout): Promise<Order> {
+  const items = await cartProducts(cartId)
+  if (items.length === 0) throw new Error('Your bag is empty (items may have just sold out).')
+  const d = SHOP_DELIVERY[form.del] ?? SHOP_DELIVERY.nairobi
+  const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0) + d.fee
+  const location = form.del === 'pickup' ? 'Nairobi CBD pick-up point' : form.area || d.label
+  const inserted = await query<Order>(
+    `INSERT INTO orders (customer_name, phone, town, delivery_option, delivery_location, total_ksh)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [form.name, form.phone, location, d.label, location, total],
+  )
+  const order = inserted.rows[0]
+  for (const p of items) {
+    await query('INSERT INTO order_items (order_id, product_id, price_ksh) VALUES ($1, $2, $3)', [
+      order.id,
+      p.id,
+      p.price_ksh ?? 0,
+    ])
+  }
+  return order
+}
+
+// Customer-facing order reference, e.g. DN-1042.
+export const dnCode = (id: number): string => `DN-${1000 + id}`
+
+// Map our order status to the shop's 4-step tracker index (0..3).
+export function statusIndex(status: Order['status']): number {
+  if (status === 'collected') return 3
+  if (status === 'dropped' || status === 'packed') return 2
+  if (status === 'paid') return 1
+  return 0
+}
+
 // Single-product order created from the WhatsApp chat flow (no cart).
 export async function createDirectOrder(productId: number, form: CheckoutForm): Promise<Order> {
   const res = await query<{ price_ksh: number | null; status: string }>(
