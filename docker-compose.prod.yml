@@ -13,8 +13,8 @@ services:
     container_name: dressnation_postgres
   waha:
     container_name: dressnation_waha
-  minio:
-    container_name: dressnation_minio
+  s3:
+    container_name: dressnation_s3
 
 networks:
   default:

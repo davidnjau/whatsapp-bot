@@ -42,7 +42,7 @@ const Env = z.object({
 
   // Object storage: 'disk' (local MEDIA_DIR) or 'minio' (self-hosted S3).
   STORAGE_BACKEND: z.enum(['disk', 'minio']).default('disk'),
-  S3_ENDPOINT: z.string().default('minio:9000'),
+  S3_ENDPOINT: z.string().default('s3:9000'),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('dressnation'),
   S3_ACCESS_KEY: z.string().default(''),
