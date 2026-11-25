@@ -65,9 +65,11 @@ _BIREFNET_TF = transforms.Compose(
 
 def run_birefnet(img: Image.Image) -> tuple[Image.Image, Image.Image]:
     model = MANAGER.get("birefnet")["model"]
-    x = _BIREFNET_TF(img).unsqueeze(0).to(DEVICE)
+    # BiRefNet's checkpoint may be fp16; match the input tensor to the model dtype.
+    dtype = next(model.parameters()).dtype
+    x = _BIREFNET_TF(img).unsqueeze(0).to(DEVICE).to(dtype)
     with torch.no_grad():
-        pred = model(x)[-1].sigmoid().cpu()[0].squeeze()
+        pred = model(x)[-1].sigmoid().cpu().float()[0].squeeze()
     mask = transforms.ToPILImage()(pred).resize(img.size)
     cutout = img.convert("RGBA")
     cutout.putalpha(mask)
@@ -106,6 +108,9 @@ def run_siglip(img: Image.Image) -> list[float]:
     bundle = MANAGER.get("siglip")
     model, processor = bundle["model"], bundle["processor"]
     inputs = processor(images=[img], return_tensors="pt").to(DEVICE)
+    dtype = next(model.parameters()).dtype
+    if "pixel_values" in inputs:
+        inputs["pixel_values"] = inputs["pixel_values"].to(dtype)
     with torch.no_grad():
         feats = (
             model.get_image_features(**inputs)
