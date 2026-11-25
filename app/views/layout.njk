@@ -39,6 +39,25 @@
     .e-table td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
     .e-tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
     .e-muted{color:var(--muted)}
+    /* Compact catalogue rows + icon actions + kebab menu */
+    .dn-icon{width:40px;height:40px;flex:none;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;padding:0}
+    .dn-icon:hover{border-color:var(--accent);color:var(--accent)}
+    .dn-icon.on{background:var(--ink);color:#f3c14b;border-color:var(--ink)}
+    .dn-icon.ai{border-color:var(--accent);color:var(--accent)}
+    .dn-kebab{position:relative}
+    .dn-menu{position:absolute;right:0;top:46px;z-index:20;min-width:200px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 36px -14px rgba(43,39,36,.4);padding:6px;display:none;flex-direction:column}
+    .dn-menu.open{display:flex}
+    .dn-menu a,.dn-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:400 14px Inter,sans-serif;color:var(--ink);border-radius:8px;cursor:pointer;text-decoration:none}
+    .dn-menu a:hover,.dn-menu button:hover{background:var(--panel)}
+    .dn-menu .danger{color:#7a1f2b}
+    .sidetoggle{display:none}
+    @media(max-width:760px){
+      .side{display:none;position:fixed;inset:0 auto 0 0;z-index:40;max-width:280px;width:82%}
+      .side.open{display:flex;box-shadow:0 0 50px rgba(0,0,0,.35)}
+      .sidetoggle{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px 14px;font:500 14px Inter,sans-serif;cursor:pointer}
+      .main{padding:18px 14px 56px}
+      .e-h1{font-size:30px}
+    }
   </style>
 </head>
 <body>
@@ -68,6 +87,7 @@
       {% endif %}
     </aside>
     <main class="main">
+      {% if authed %}<button class="sidetoggle" id="sideToggle" aria-label="Menu">☰ Menu</button>{% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -83,6 +103,19 @@
       });
       if (best) best.setAttribute('aria-current', 'page');
     })();
+    // Mobile sidebar toggle
+    (function () {
+      var t = document.getElementById('sideToggle'), side = document.querySelector('.side');
+      if (t && side) t.addEventListener('click', function (e) { e.stopPropagation(); side.classList.toggle('open'); });
+    })();
+    // Per-dress "⋯" dropdown menus (open one, close the rest / on outside click)
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.dn-kebab > button');
+      document.querySelectorAll('.dn-menu.open').forEach(function (m) {
+        if (!btn || m !== btn.nextElementSibling) m.classList.remove('open');
+      });
+      if (btn) { btn.nextElementSibling.classList.toggle('open'); e.stopPropagation(); }
+    });
   </script>
 </body>
 </html>

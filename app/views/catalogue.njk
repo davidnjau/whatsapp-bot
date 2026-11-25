@@ -49,11 +49,11 @@
 
 <div style="display:flex;flex-direction:column;gap:14px">
   {% for p in products %}
-  <div class="e-card" style="display:flex;gap:16px;padding:16px">
+  <div class="e-card dn-row" style="display:flex;gap:14px;padding:14px;align-items:flex-start">
     <a href="/shop/img/{{ p.id }}" target="_blank" title="View full photo" style="flex:none">
-      <img src="/shop/img/{{ p.id }}" style="width:96px;height:128px;object-fit:cover;border-radius:10px;background:var(--panel)" alt="">
+      <img src="/shop/img/{{ p.id }}" style="width:84px;height:112px;object-fit:cover;border-radius:10px;background:var(--panel)" alt="">
     </a>
-    <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:12px">
+    <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-weight:500">#{{ p.id }}</span>
         <span class="e-tag" style="
@@ -61,38 +61,39 @@
           {% elif p.status == 'sold' %}background:var(--ink);color:#fff
           {% else %}background:var(--panel);color:var(--ink){% endif %}">{{ p.status }}</span>
         {% if p.needs_review %}<span class="e-tag" style="background:#f3dcd3;color:#7a1f2b">needs review</span>{% endif %}
-        {% if p.featured %}<span class="e-tag" style="background:#eef0e4;color:var(--accent)">★ fitting room</span>{% endif %}
-        {% if p.ocr_source %}<span class="e-muted" style="font-size:12px">ocr: {{ p.ocr_source }}</span>{% endif %}
+        {% if p.ai_ingested_at %}<span class="e-tag" style="background:#eef0e4;color:var(--accent)">✨ AI</span>{% endif %}
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <form method="post" action="/admin/catalogue/{{ p.id }}/featured?filter={{ filter }}">
+            <input type="hidden" name="featured" value="{{ 'off' if p.featured else 'on' }}">
+            <button class="dn-icon {{ 'on' if p.featured }}" title="{{ 'In fitting room' if p.featured else 'Add to fitting room' }}" aria-label="Toggle fitting room">★</button>
+          </form>
+          <form method="post" action="/admin/catalogue/{{ p.id }}/ingest">
+            <button class="dn-icon {{ 'ai' if p.ai_ingested_at }}" title="{{ 'Re-run AI' if p.ai_ingested_at else 'Enrich with AI' }}" aria-label="Enrich with AI">✨</button>
+          </form>
+          <div class="dn-kebab">
+            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+            <div class="dn-menu">
+              <a href="/admin/catalogue/{{ p.id }}/edit">Edit details{% if p.ai_ingested_at %} ✓{% endif %}</a>
+              {% if p.status == 'draft' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button>Publish (status + shop)</button></form>
+              {% elif p.status == 'published' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button>Repost status</button></form>
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/sold"><button>Mark sold</button></form>
+              {% elif p.status == 'sold' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/published"><button>Back to shop</button></form>
+              {% endif %}
+              <a href="/shop/p/{{ p.id }}" target="_blank">View on shop ↗</a>
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/archived" onsubmit="return confirm('Archive this dress?')"><button class="danger">Archive</button></form>
+            </div>
+          </div>
+        </div>
       </div>
-      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" style="display:flex;gap:8px;flex-wrap:wrap">
-        <input name="title" value="{{ p.title or '' }}" placeholder="Dress #{{ p.id }}" class="e-input" style="width:150px">
-        <input name="size" value="{{ p.size or '' }}" placeholder="e.g. 14 or 8/10" class="e-input" style="width:120px">
-        <input name="price" value="{{ p.price_ksh or 1000 }}" placeholder="Ksh" class="e-input" style="width:96px">
-        <button class="e-btn">Save</button>
+      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input name="title" value="{{ p.title or '' }}" placeholder="Dress #{{ p.id }}" class="e-input" style="flex:1 1 180px;min-width:120px">
+        <input name="size" value="{{ p.size or '' }}" placeholder="size" class="e-input" style="width:76px">
+        <input name="price" value="{{ p.price_ksh or 1000 }}" placeholder="Ksh" class="e-input" style="width:88px">
+        <button class="dn-icon" title="Save title / size / price" aria-label="Save">✓</button>
       </form>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <form method="post" action="/admin/catalogue/{{ p.id }}/featured?filter={{ filter }}">
-          <input type="hidden" name="featured" value="{{ 'off' if p.featured else 'on' }}">
-          <button class="e-pill {{ 'on' if p.featured }}" style="{% if p.featured %}background:var(--accent);border-color:var(--accent){% endif %}">
-            {{ '★ In fitting room' if p.featured else '☆ Add to fitting room' }}
-          </button>
-        </form>
-        <a href="/admin/catalogue/{{ p.id }}/edit" class="e-btn">Edit details{% if p.ai_ingested_at %} ✓AI{% endif %}</a>
-        <form method="post" action="/admin/catalogue/{{ p.id }}/ingest">
-          <button class="e-btn e-btn-olive">✨ Enrich with AI</button>
-        </form>
-        {% if p.status == 'draft' %}
-        <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button class="e-btn e-btn-dark">Publish (status + shop)</button></form>
-        {% elif p.status == 'published' %}
-        <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button class="e-btn">Repost status</button></form>
-        <form method="post" action="/admin/catalogue/{{ p.id }}/status/sold"><button class="e-btn">Mark sold</button></form>
-        {% elif p.status == 'sold' %}
-        <form method="post" action="/admin/catalogue/{{ p.id }}/status/published"><button class="e-btn">Back to shop</button></form>
-        {% endif %}
-        <form method="post" action="/admin/catalogue/{{ p.id }}/status/archived" onsubmit="return confirm('Archive this product?')">
-          <button class="e-btn" style="color:#7a1f2b;border-color:#d8b4ab">Archive</button>
-        </form>
-      </div>
     </div>
   </div>
   {% else %}
