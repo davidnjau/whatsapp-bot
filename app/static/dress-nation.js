@@ -117,7 +117,7 @@ function setupRing(){
   ring.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(Math.round(ringTarget)+1);if(e.key==='ArrowLeft')go(Math.round(ringTarget)-1)});
   // Auto-play the carousel: gently turn to the next dress, pausing while the
   // shopper hovers, drags or has the tab in the background.
-  ring.addEventListener('pointerenter',()=>ringHover=true);
+  ring.addEventListener('pointermove',e=>{ringHover=!!e.target.closest('.dress')});
   ring.addEventListener('pointerleave',()=>ringHover=false);
   clearInterval(ringAuto);
   if(DRESSES.length>1&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
