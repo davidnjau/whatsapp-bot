@@ -14,7 +14,7 @@
   {% for o in orders %}
   <div class="e-card" style="display:flex;flex-direction:column;gap:12px;font-size:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <span style="font-weight:500">#{{ o.id }} · {{ o.customer_name }} · <span class="pricetag">Ksh {{ o.total_ksh }}</span></span>
+      <span style="font-weight:500">{{ o.dn }} · {{ o.customer_name }} · <span class="pricetag">Ksh {{ o.total_ksh }}</span></span>
       <span class="e-tag" style="
         {% if o.status in ['dropped', 'collected'] %}background:var(--accent);color:#fff
         {% elif o.status in ['paid', 'packed'] %}background:#f1e4cf;color:#6b4e1e

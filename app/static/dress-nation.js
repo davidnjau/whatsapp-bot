@@ -303,8 +303,9 @@ function setupGallery(){
 function emptyView(i,h,p,href,cta){return `<div class="empty view"><div class="ic">${ic(i)}</div><h3>${h}</h3><p>${p}</p><a class="btn primary" href="${href}">${cta}</a></div>`}
 
 /* ---------- router ---------- */
-const ROUTES={shop,bag,details,payment,orders,admin};
-const TITLES={shop:'Try on this week\'s dresses',bag:'Your bag',details:'Delivery details',payment:'Payment',orders:'My orders',admin:'Shop admin'};
+// Admin lives on the real server-rendered dashboard (/admin), not in the SPA.
+const ROUTES={shop,bag,details,payment,orders};
+const TITLES={shop:'Try on this week\'s dresses',bag:'Your bag',details:'Delivery details',payment:'Payment',orders:'My orders'};
 let route='shop';
 let dressId=0;
 function render(){

@@ -15,7 +15,7 @@ import {
   type CatalogueFilter,
   type Product,
 } from '../modules/shop/index.js'
-import { listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
+import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { requireWebAuth } from './auth.js'
 
 export const adminShopRoutes: FastifyPluginAsync = async (app) => {
@@ -142,6 +142,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     // Annotate each item with the OTHER orders claiming the same dress.
     const view = orders.map((o) => ({
       ...o,
+      dn: dnCode(o.id),
       items: o.items.map((i) => ({
         ...i,
         conflict_orders: (conflicts[i.product_id] ?? []).filter((c) => c.id !== o.id),
