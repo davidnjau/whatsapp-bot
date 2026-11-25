@@ -42,7 +42,7 @@ function addToBag(id,fromEl){
 }
 
 /* ---------- SHOP ---------- */
-let ringRAF=0,ringPos=0,ringTarget=0;
+let ringRAF=0,ringPos=0,ringTarget=0,ringAuto=0,ringHover=false;
 function shop(){
   const d=DRESSES[S.cur];
   const list=DRESSES.filter(x=>S.size==='all'||x.sizes.includes(+S.size));
@@ -115,6 +115,17 @@ function setupRing(){
   ring.addEventListener('click',e=>{const p=e.target.closest('[data-pick]');if(p&&!(ring._moved>6)){const i=+p.dataset.pick;if(i===S.cur&&wrapd(Math.round(ringTarget))===i)location.hash='dress-'+DRESSES[i].id;else goTo(i)}
     const st=e.target.closest('[data-step]');if(st)go(Math.round(ringTarget)+ +st.dataset.step)});
   ring.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(Math.round(ringTarget)+1);if(e.key==='ArrowLeft')go(Math.round(ringTarget)-1)});
+  // Auto-play the carousel: gently turn to the next dress, pausing while the
+  // shopper hovers, drags or has the tab in the background.
+  ring.addEventListener('pointerenter',()=>ringHover=true);
+  ring.addEventListener('pointerleave',()=>ringHover=false);
+  clearInterval(ringAuto);
+  if(DRESSES.length>1&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
+    ringAuto=setInterval(()=>{
+      if(!document.getElementById('ring')||drag||ringHover||document.hidden)return;
+      go(Math.round(ringTarget)+1);
+    },2600);
+  }
   observeCards();
 }
 function observeCards(){
