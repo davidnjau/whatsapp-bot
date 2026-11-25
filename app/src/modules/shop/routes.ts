@@ -1,5 +1,8 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
+import { config } from '../../config.js'
+import { enqueueSend } from '../../queue/index.js'
+import { toChatId } from '../../lib/phone.js'
 import { readMediaContent } from '../status/media.js'
 import { addToCart, cartCount, cartExists, cartProducts, createCart, removeFromCart } from './carts.js'
 import { getProduct, type Product } from './index.js'
@@ -16,7 +19,7 @@ import {
 import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
-import { fitAdvice, stylingAdvice } from './advisor.js'
+import { fitAdvice, stylingAdvice, type FitAdvice, type StylingAdvice } from './advisor.js'
 
 const CART_COOKIE = 'cart_id'
 
@@ -70,13 +73,26 @@ function matchesSize(p: Product, size: string): boolean {
   return (p.size ?? '').split('/').map((s) => s.trim()).includes(size)
 }
 
+// WhatsApp-ready text for a stylist answer (sent as the dress photo's caption).
+function stylistText(product: Product, mode: 'fit' | 'style', advice: FitAdvice | StylingAdvice): string {
+  const name = productName(product)
+  if (mode === 'fit') {
+    const a = advice as FitAdvice
+    return `👗 ${name} — fit advice\n\n${a.stylist_reply}` + (a.recommended_size ? `\n\nSuggested size: ${a.recommended_size}` : '')
+  }
+  const a = advice as StylingAdvice
+  const lines = [`✨ ${name} — styling ideas`, '', ...a.styling_tips.map((t) => `• ${t}`)]
+  for (const [occ, tip] of Object.entries(a.by_occasion)) lines.push(`${occ}: ${tip}`)
+  return lines.join('\n')
+}
+
 const POST_LIMIT = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }
 
 export const shopRoutes: FastifyPluginAsync = async (app) => {
   // The shop is a single-page app (ported reference design); it loads the
   // catalogue from /shop/api/catalogue and handles its own hash routes.
   app.get('/shop', async (_req, reply) => {
-    return reply.view('shop_app.njk', { wa: brand.whatsapp })
+    return reply.view('shop_app.njk', { wa: brand.whatsapp, stylistPrice: config.stylistPrice })
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
@@ -176,22 +192,47 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
-  // "Will it fit me?" — AI stylist answer for a dress (unavailable if the
-  // worker isn't configured; the UI then points to WhatsApp).
-  app.post<{ Params: { id: string } }>('/shop/api/fit/:id', POST_LIMIT, async (req, reply) => {
-    const { message } = z.object({ message: z.string().min(2).max(500) }).parse(req.body ?? {})
+  // Paid AI stylist: fit or styling advice, delivered on the web or as a
+  // WhatsApp message carrying the dress photo. Payment is simulated for now —
+  // real M-Pesa STK slots in before the advice is generated.
+  app.post<{ Params: { id: string } }>('/shop/api/stylist/:id', POST_LIMIT, async (req, reply) => {
+    const form = z
+      .object({
+        mode: z.enum(['fit', 'style']),
+        message: z.string().max(500).optional(),
+        channel: z.enum(['web', 'whatsapp']),
+        phone: z.string().optional(),
+      })
+      .safeParse(req.body ?? {})
+    if (!form.success) return reply.send({ error: 'Please check your details.' })
+    const { mode, message, channel, phone } = form.data
     const product = await getProduct(Number(req.params.id))
     if (!product) return reply.code(404).send({ error: 'not found' })
-    const advice = await fitAdvice(product, message)
-    return reply.send(advice ?? { unavailable: true })
-  })
 
-  // "How to style it" — styling advice for a dress.
-  app.get<{ Params: { id: string } }>('/shop/api/style/:id', async (req, reply) => {
-    const product = await getProduct(Number(req.params.id))
-    if (!product) return reply.code(404).send({ error: 'not found' })
-    const advice = await stylingAdvice(product)
-    return reply.send(advice ?? { unavailable: true })
+    // --- payment (simulated) happens here; real STK push slots in ---
+
+    const advice =
+      mode === 'fit'
+        ? await fitAdvice(product, message || 'Will this dress fit me?')
+        : await stylingAdvice(product)
+    if (!advice) return reply.send({ unavailable: true })
+
+    if (channel === 'whatsapp') {
+      const chatId = phone ? toChatId(phone) : null
+      if (!chatId) return reply.send({ error: 'Enter a valid Kenyan number.' })
+      await enqueueSend({
+        chatId,
+        module: 'shop',
+        kind: 'stylist',
+        payload: {
+          type: 'image',
+          file: { url: `${config.internalBaseUrl}/shop/img/${product.id}` },
+          caption: stylistText(product, mode, advice),
+        },
+      })
+      return reply.send({ sent: true })
+    }
+    return reply.send({ mode, advice })
   })
 
   // Live status for a placed order (My orders tracker).

@@ -39,6 +39,7 @@ const Env = z.object({
   SESSION_SECRET: z.string().min(1),
 
   SHOP_RESERVE_MINUTES: z.coerce.number().default(3),
+  SHOP_STYLIST_PRICE: z.coerce.number().default(50),
 
   // Object storage: 'disk' (local MEDIA_DIR) or 'minio' (self-hosted S3).
   STORAGE_BACKEND: z.enum(['disk', 'minio']).default('disk'),
@@ -106,6 +107,7 @@ export const config = {
   sessionSecret: env.SESSION_SECRET,
 
   shopReserveMinutes: env.SHOP_RESERVE_MINUTES,
+  stylistPrice: env.SHOP_STYLIST_PRICE,
 
   storageBackend: env.STORAGE_BACKEND,
   s3: {

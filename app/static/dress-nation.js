@@ -269,13 +269,19 @@ function dressView(id){
         <button class="btn outline block" data-tryon="${i}">Try it on in the fitting room</button></div>
       <ul class="dnotes" ${st(7)}><li>${ic('truck')}<span>Free pick-up in Nairobi CBD, Ksh 200 in Nairobi, Ksh 350 countrywide.</span></li><li>${ic('shield')}<span>Pre-loved and one of a kind. <strong>No refunds or exchanges</strong>, so please check the size.</span></li><li>${ic('chat')}<span>We confirm every order on WhatsApp.</span></li></ul>
       <div class="advisor" ${st(8)} style="margin-top:4px;border-top:1px solid var(--border);padding-top:16px">
-        <h3 style="font-size:16px;margin:0 0 8px">Ask the stylist</h3>
+        <h3 style="font-size:16px;margin:0 0 4px">Ask the stylist</h3>
+        <p class="small" style="margin:0 0 10px">A personal answer for <b>Ksh ${window.DN_STYLIST_PRICE}</b> — get it here or on WhatsApp with the photo.</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:14px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="styCh" value="web" checked> Here on the page</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="styCh" value="whatsapp"> On WhatsApp</label>
+        </div>
+        <input class="inp" id="styPhone" placeholder="WhatsApp number, e.g. 0712 345 678" style="display:none;width:100%;margin-bottom:10px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input class="inp" id="fitq" placeholder="I'm 5'5, UK 10, curvy hips — will it fit?" style="flex:1 1 220px">
-          <button class="btn outline" data-fit="${d.id}">Will it fit me?</button>
+          <input class="inp" id="fitq" placeholder="I'm 5'5, UK 10, curvy hips…" style="flex:1 1 220px">
+          <button class="btn outline" data-fit="${d.id}">Will it fit me? · Ksh ${window.DN_STYLIST_PRICE}</button>
         </div>
         <div id="fitout" style="margin-top:10px"></div>
-        <button class="btn soft" data-style="${d.id}" style="margin-top:10px">How to style it ✨</button>
+        <button class="btn soft" data-style="${d.id}" style="margin-top:10px">How to style it ✨ · Ksh ${window.DN_STYLIST_PRICE}</button>
         <div id="styleout" style="margin-top:10px"></div>
       </div>
     </div>
@@ -313,25 +319,30 @@ function setupGallery(){
 function emptyView(i,h,p,href,cta){return `<div class="empty view"><div class="ic">${ic(i)}</div><h3>${h}</h3><p>${p}</p><a class="btn primary" href="${href}">${cta}</a></div>`}
 
 const WA=()=>window.DN_WA||'';
-async function askFit(id){
-  const q=document.getElementById('fitq'),out=document.getElementById('fitout');
-  const msg=((q&&q.value)||'').trim();if(msg.length<2){q&&q.focus();return}
-  out.innerHTML='<span class="small">Asking the stylist…</span>';
-  let r;try{r=await fetch('/shop/api/fit/'+id,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:msg})}).then(x=>x.json())}catch(e){r=null}
-  if(!r||r.unavailable){out.innerHTML='<span class="small">Our stylist isn\'t online right now — <a class="textlink" href="https://wa.me/'+WA()+'?text='+encodeURIComponent('Hi! Will '+(byId(id)||{}).name+' fit me? '+msg)+'">ask us on WhatsApp</a>.</span>';return}
-  out.innerHTML='<div class="box" style="margin-top:0"><p style="margin:0">'+esc(r.stylist_reply)+'</p>'+(r.recommended_size?'<p class="small" style="margin:6px 0 0">Suggested size: <b>'+esc(r.recommended_size)+'</b></p>':'')+'</div>';
-}
-async function askStyle(id){
-  const out=document.getElementById('styleout');
-  out.innerHTML='<span class="small">Thinking of styling ideas…</span>';
-  let r;try{r=await fetch('/shop/api/style/'+id).then(x=>x.json())}catch(e){r=null}
-  if(!r||r.unavailable){out.innerHTML='<span class="small">Styling tips coming soon — <a class="textlink" href="https://wa.me/'+WA()+'">ask us on WhatsApp</a>.</span>';return}
-  let html='<div class="box" style="margin-top:0"><ul style="margin:0;padding-left:18px">';
-  (r.styling_tips||[]).forEach(t=>html+='<li>'+esc(t)+'</li>');
-  html+='</ul>';
-  const by=r.by_occasion||{};
-  for(const k in by)html+='<p class="small" style="margin:6px 0 0"><b>'+esc(k)+':</b> '+esc(by[k])+'</p>';
-  out.innerHTML=html+'</div>';
+function styChannel(){return (document.querySelector('input[name="styCh"]:checked')||{}).value||'web';}
+// Paid stylist request: pay (simulated) then deliver on web or WhatsApp.
+async function askStylist(id,mode){
+  const out=document.getElementById(mode==='fit'?'fitout':'styleout');
+  const channel=styChannel();
+  const phone=((document.getElementById('styPhone')||{}).value||'').trim();
+  const message=((document.getElementById('fitq')||{}).value||'').trim();
+  if(mode==='fit'&&message.length<2){const q=document.getElementById('fitq');q&&q.focus();return}
+  if(channel==='whatsapp'&&phone.replace(/\D/g,'').length<9){out.innerHTML='<span class="small">Enter your WhatsApp number above first.</span>';return}
+  out.innerHTML='<span class="small">Paying Ksh '+window.DN_STYLIST_PRICE+' and asking the stylist…</span>';
+  let r;try{r=await fetch('/shop/api/stylist/'+id,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode,message,channel,phone})}).then(x=>x.json())}catch(e){r=null}
+  if(!r||r.unavailable){out.innerHTML='<span class="small">Our stylist isn\'t online right now — <a class="textlink" href="https://wa.me/'+WA()+'">ask us on WhatsApp</a>.</span>';return}
+  if(r.error){out.innerHTML='<span class="small">'+esc(r.error)+'</span>';return}
+  if(r.sent){out.innerHTML='<div class="box" style="margin-top:0"><p style="margin:0">✅ Sent to your WhatsApp ('+esc(phone)+') with the dress photo.</p></div>';return}
+  const a=r.advice||{};
+  if(mode==='fit'){
+    out.innerHTML='<div class="box" style="margin-top:0"><p style="margin:0">'+esc(a.stylist_reply||'')+'</p>'+(a.recommended_size?'<p class="small" style="margin:6px 0 0">Suggested size: <b>'+esc(a.recommended_size)+'</b></p>':'')+'</div>';
+  }else{
+    let html='<div class="box" style="margin-top:0"><ul style="margin:0;padding-left:18px">';
+    (a.styling_tips||[]).forEach(t=>html+='<li>'+esc(t)+'</li>');
+    html+='</ul>';const by=a.by_occasion||{};
+    for(const k in by)html+='<p class="small" style="margin:6px 0 0"><b>'+esc(k)+':</b> '+esc(by[k])+'</p>';
+    out.innerHTML=html+'</div>';
+  }
 }
 
 /* ---------- router ---------- */
@@ -381,8 +392,8 @@ app.addEventListener('click',e=>{
   else if(ds.v){S.view=ds.v;render()}
   else if(ds.size){S.size=ds.size;render();if(t.closest('.empty'))document.getElementById('drop').scrollIntoView()}
   else if(ds.tryon){const i=+ds.tryon;S.cur=i;ringTarget=i;ringPos=i;location.hash='shop'}
-  else if(ds.fit){askFit(+ds.fit)}
-  else if(ds.style){askStyle(+ds.style)}
+  else if(ds.fit){askStylist(+ds.fit,'fit')}
+  else if(ds.style){askStylist(+ds.style,'style')}
   else if(ds.g){showMedia(S.gi+ +ds.g)}
   else if(ds.gi){showMedia(+ds.gi)}
   else if(ds.remove){const pid=+ds.remove;S.bag=S.bag.filter(x=>x!==pid);persist();badge();render();
@@ -409,7 +420,8 @@ app.addEventListener('input',e=>{
   else if(id==='mcode'){S.pay.code=e.target.value;document.getElementById('codeErr').hidden=true;e.target.classList.remove('bad')}
   const b=document.getElementById('toPay');if(b)b.disabled=!canPay();
 });
-app.addEventListener('change',e=>{if(e.target.id==='fagree'){S.form.agree=e.target.checked;const b=document.getElementById('toPay');if(b)b.disabled=!canPay()}});
+app.addEventListener('change',e=>{if(e.target.id==='fagree'){S.form.agree=e.target.checked;const b=document.getElementById('toPay');if(b)b.disabled=!canPay()}
+  if(e.target.name==='styCh'){const p=document.getElementById('styPhone');if(p)p.style.display=styChannel()==='whatsapp'?'block':'none';}});
 app.addEventListener('submit',e=>{e.preventDefault();if(canPay())location.hash='payment'});
 
 /* ---------- init: load the live catalogue, then boot ---------- */
