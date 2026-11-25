@@ -71,7 +71,8 @@ function buildDress(p: Product, rows: MediaRow[]): DressDTO {
   const model = firstOfKind('model') ?? firstOfKind('photo') ?? rows[0]
   const mannequin = firstOfKind('mannequin') ?? model
   return {
-    id: p.id,
+    // pg returns bigint as a string; the front-end compares ids numerically.
+    id: Number(p.id),
     name,
     sizes: parseSizes(p.size),
     size: p.size ?? '',
