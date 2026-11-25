@@ -45,11 +45,12 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
     const product = await getProduct(Number(req.params.id))
-    if (!product || (product.status !== 'published' && product.status !== 'sold')) {
-      return reply.callNotFound()
-    }
     const cartId = await getCartId(req)
     const count = cartId ? await cartCount(cartId) : 0
+    // Drafts/archived dresses aren't public — show a friendly page, not JSON 404.
+    if (!product || (product.status !== 'published' && product.status !== 'sold')) {
+      return reply.code(404).view('shop_notfound.njk', { cartCount: count })
+    }
     const heldByOther = isHeldByOther(product, cartId ?? '')
     return reply.view('shop_product.njk', { product, cartCount: count, heldByOther })
   })
