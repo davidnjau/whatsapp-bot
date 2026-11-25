@@ -89,7 +89,7 @@ function card(d){
     ${sold?`<button class="btn outline" disabled>Sold</button>`:bagged?`<a class="btn soft" href="#bag">In your bag — view</a>`:`<button class="btn outline" data-add="${d.id}">Add to bag</button>`}
   </article>`;
 }
-const N=DRESSES.length,wrapd=v=>((v%N)+N)%N,near=o=>((o+N/2)%N+N)%N-N/2;
+let N=DRESSES.length;const wrapd=v=>((v%N)+N)%N,near=o=>((o+N/2)%N+N)%N-N/2;
 let drag=null;
 function drawRing(){
     const ring=document.getElementById('ring');if(!ring)return;
@@ -360,6 +360,7 @@ async function loadCatalogue(){
       DRESSES.push(d);
     }
   }catch(e){ /* leave DRESSES empty; views show their empty states */ }
+  N=DRESSES.length;  // the ring math (wrapd/near/drawRing) needs the real count
   // Drop any bagged/sold ids that are no longer in the catalogue.
   const ids=new Set(DRESSES.map(d=>d.id));
   S.bag=S.bag.filter(id=>ids.has(id));
