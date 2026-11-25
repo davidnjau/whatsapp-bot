@@ -35,7 +35,7 @@ export async function cartProducts(cartId: string): Promise<Product[]> {
   const res = await query<Product>(
     `SELECT p.* FROM cart_items ci
      JOIN products p ON p.id = ci.product_id
-     WHERE ci.cart_id = $1 AND ${AVAILABLE_TO('$1')}
+     WHERE ci.cart_id = $1::uuid AND ${AVAILABLE_TO('$1::text')}
      ORDER BY ci.added_at`,
     [cartId],
   )
@@ -46,7 +46,7 @@ export async function cartCount(cartId: string): Promise<number> {
   const res = await query<{ count: string }>(
     `SELECT count(*) FROM cart_items ci
      JOIN products p ON p.id = ci.product_id
-     WHERE ci.cart_id = $1 AND ${AVAILABLE_TO('$1')}`,
+     WHERE ci.cart_id = $1::uuid AND ${AVAILABLE_TO('$1::text')}`,
     [cartId],
   )
   return Number(res.rows[0].count)
