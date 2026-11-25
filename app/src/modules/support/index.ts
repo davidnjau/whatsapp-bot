@@ -8,14 +8,15 @@ import { startHandoff, setBotPaused } from './handoff.js'
 import { isWithinBusinessHours } from './hours.js'
 import {
   greetingFor,
+  isMenuCommand,
   loadMenu,
   matchMenuItem,
-  menuList,
+  menuMessage,
   parseLanguageChoice,
   type Lang,
 } from './menu.js'
 import { isAngry, parseStaffCommand, wantsHuman } from './triggers.js'
-import { handleShopMessage, sendCatalogueTo } from '../shop/chat.js'
+import { abandonShopSession, handleShopMessage, sendCatalogueTo } from '../shop/chat.js'
 
 export interface InboundDm {
   chatId: string
@@ -65,7 +66,14 @@ export async function handleInboundDm(msg: InboundDm) {
     }
     await query('UPDATE chats SET language = $2 WHERE chat_id = $1', [msg.chatId, pick])
     lang = pick
-    await reply(msg.chatId, `${greetingFor(menu, lang).trim()}\n\n${menuList(menu, lang)}`)
+    await reply(msg.chatId, menuMessage(menu, lang, greetingFor(menu, lang)))
+    return
+  }
+
+  // "menu" / "back" — abandon any active order and re-show the menu.
+  if (isMenuCommand(msg.body)) {
+    await abandonShopSession(msg.chatId)
+    await reply(msg.chatId, menuMessage(menu, lang))
     return
   }
 
@@ -121,8 +129,8 @@ export async function handleInboundDm(msg: InboundDm) {
       [msg.chatId],
     )
     const isFirstContact = Number(inboundCount.rows[0].count) <= 1
-    const header = isFirstContact ? greetingFor(menu, lang).trim() : menu.fallback.trim()
-    return reply(msg.chatId, `${prefix}${header}\n\n${menuList(menu, lang)}`)
+    const header = isFirstContact ? greetingFor(menu, lang) : menu.fallback
+    return reply(msg.chatId, prefix + menuMessage(menu, lang, header))
   }
 
   // AI mode

@@ -13,6 +13,7 @@ const Env = z.object({
   WEBHOOK_SECRET: z.string().min(1),
   // Internal URL WAHA calls to reach us; defaults to the compose service name.
   WEBHOOK_URL: z.string().optional(),
+  INTERNAL_BASE_URL: z.string().optional(),
 
   POSTGRES_HOST: z.string(),
   POSTGRES_PORT: z.coerce.number().default(5432),
@@ -65,6 +66,9 @@ export const config = {
   wahaSession: env.WAHA_SESSION,
   webhookSecret: env.WEBHOOK_SECRET,
   wahaWebhookUrl: env.WEBHOOK_URL ?? `http://app:${env.APP_PORT}/webhooks/waha`,
+  // Reachable by the WAHA container (same docker network) to fetch product
+  // images — distinct from appBaseUrl, which is the public/customer URL.
+  internalBaseUrl: env.INTERNAL_BASE_URL ?? `http://app:${env.APP_PORT}`,
 
   databaseUrl:
     `postgres://${encodeURIComponent(env.POSTGRES_USER)}:${encodeURIComponent(env.POSTGRES_PASSWORD)}` +

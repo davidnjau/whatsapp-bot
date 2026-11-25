@@ -21,6 +21,8 @@ export const MenuSchema = z.object({
     .default('Choose a language / Chagua lugha:\n1. English\n2. Kiswahili\n3. Mix'),
   greeting: z.string().default(''),
   greetings: LangStrings.optional(),
+  menu_footer: z.string().default(''),
+  menu_footers: LangStrings.optional(),
   fallback: z.string().default("Sorry, I didn't understand. Reply with a number:"),
   after_hours: z.string().default('We are currently closed. We will reply during business hours.'),
   media_ack: z.string().default('Thanks! A member of our team will take a look shortly.'),
@@ -67,6 +69,24 @@ export function matchMenuItem(menu: Menu, text: string): MenuItem | null {
 
 export function menuList(menu: Menu, lang: Lang = 'mix'): string {
   return menu.menu.map((item) => `${item.key}. ${titleFor(item, lang)}`).join('\n')
+}
+
+function footerFor(menu: Menu, lang: Lang): string {
+  if (lang === 'en') return menu.menu_footers?.en ?? menu.menu_footer
+  if (lang === 'sw') return menu.menu_footers?.sw ?? menu.menu_footer
+  return menu.menu_footer
+}
+
+// A full menu message: optional header + numbered options + policy footer.
+export function menuMessage(menu: Menu, lang: Lang, header = ''): string {
+  return [header.trim(), menuList(menu, lang), footerFor(menu, lang).trim()]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+// "menu" / "back" etc. — re-open the menu (and abandon any active order).
+export function isMenuCommand(text: string): boolean {
+  return /^\s*(menu|menyu|back|home|rudi|orodha|options?)\s*$/i.test(text)
 }
 
 export function parseMenuYaml(raw: string): Menu {

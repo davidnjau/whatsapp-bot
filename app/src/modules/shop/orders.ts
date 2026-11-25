@@ -216,6 +216,31 @@ export async function listOrders(): Promise<Array<Order & { items: OrderItem[] }
   return withItems
 }
 
+// A conflict = the same single-piece dress sits in more than one live
+// (non-cancelled) order. Returns product_id -> the orders claiming it, so the
+// admin can spot a dress sold/paid twice.
+export async function listConflicts(): Promise<Record<string, Array<{ id: number; status: string }>>> {
+  const res = await query<{ product_id: number; order_id: number; status: string }>(
+    `SELECT oi.product_id, o.id AS order_id, o.status
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id
+     WHERE o.status <> 'cancelled'
+       AND oi.product_id IN (
+         SELECT oi2.product_id FROM order_items oi2
+         JOIN orders o2 ON o2.id = oi2.order_id
+         WHERE o2.status <> 'cancelled'
+         GROUP BY oi2.product_id
+         HAVING count(DISTINCT oi2.order_id) > 1
+       )
+     ORDER BY oi.product_id, o.id`,
+  )
+  const map: Record<string, Array<{ id: number; status: string }>> = {}
+  for (const r of res.rows) {
+    ;(map[r.product_id] ??= []).push({ id: r.order_id, status: r.status })
+  }
+  return map
+}
+
 export async function setOrderStatus(id: number, status: Order['status']): Promise<void> {
   await query('UPDATE orders SET status = $2 WHERE id = $1', [id, status])
   if (status === 'cancelled') {

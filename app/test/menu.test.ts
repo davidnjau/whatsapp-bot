@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   greetingFor,
+  isMenuCommand,
   matchMenuItem,
   menuList,
+  menuMessage,
   parseLanguageChoice,
   parseMenuYaml,
   type Menu,
@@ -80,6 +82,27 @@ describe('parseLanguageChoice', () => {
   it('returns null for anything else', () => {
     expect(parseLanguageChoice('hello')).toBeNull()
     expect(parseLanguageChoice('4')).toBeNull()
+  })
+})
+
+describe('isMenuCommand', () => {
+  it('matches menu/back words', () => {
+    expect(isMenuCommand('menu')).toBe(true)
+    expect(isMenuCommand('MENU')).toBe(true)
+    expect(isMenuCommand(' back ')).toBe(true)
+    expect(isMenuCommand('rudi')).toBe(true)
+  })
+  it('ignores other text', () => {
+    expect(isMenuCommand('menu please')).toBe(false)
+    expect(isMenuCommand('buy 3')).toBe(false)
+  })
+})
+
+describe('menuMessage', () => {
+  it('appends the localized policy footer under the menu', () => {
+    const m: Menu = { ...menu, menu_footer: 'No refunds.', menu_footers: { sw: 'Hakuna refunds.' } }
+    expect(menuMessage(m, 'mix', 'Hi')).toBe('Hi\n\n1. Prices\n2. Delivery\n0. Talk to a person\n\nNo refunds.')
+    expect(menuMessage(m, 'sw')).toBe('1. Prices\n2. Delivery\n0. Talk to a person\n\nHakuna refunds.')
   })
 })
 

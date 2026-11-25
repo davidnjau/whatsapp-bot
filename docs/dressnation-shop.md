@@ -74,11 +74,14 @@ second payer cleanly.
    **Sold** and drops off the shop automatically. Use **Mark sold** /
    **Back to shop** to do it by hand.
 6. **Fulfil orders.** Admin → **Orders** lists paid orders (newest/unpaid
-   first) with the customer's name, phone, town and delivery choice. For each:
+   first) with the customer's name, phone, town and delivery choice, and a
+   **thumbnail of each dress** (click to view full-size). For each:
    **Mark packed** → drop the parcel at Pickup Mtaani → enter the **package
    code** and hit **Dropped** (this WhatsApps the buyer their tracking code and
    the 3-day collection reminder) → **Mark collected** when done. **Cancel**
-   puts the dresses back on sale.
+   puts the dresses back on sale. If the same single-piece dress ends up in
+   more than one live order, each shows a red **⚠ Conflict** note naming the
+   other order(s) and their status, so you can spot a double-paid dress.
 7. **Watch interest.** Admin → **Carts** shows what shoppers have added in the
    last 7 days, even before they pay.
 

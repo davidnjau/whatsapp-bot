@@ -12,7 +12,7 @@ import {
   updateProduct,
   type CatalogueFilter,
 } from '../modules/shop/index.js'
-import { listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
+import { listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { requireWebAuth } from './auth.js'
 
 export const adminShopRoutes: FastifyPluginAsync = async (app) => {
@@ -100,9 +100,18 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // --- orders dashboard ---
   app.get('/admin/orders', async (req, reply) => {
+    const [orders, conflicts] = await Promise.all([listOrders(), listConflicts()])
+    // Annotate each item with the OTHER orders claiming the same dress.
+    const view = orders.map((o) => ({
+      ...o,
+      items: o.items.map((i) => ({
+        ...i,
+        conflict_orders: (conflicts[i.product_id] ?? []).filter((c) => c.id !== o.id),
+      })),
+    }))
     return reply.view('orders.njk', {
       authed: true,
-      orders: await listOrders(),
+      orders: view,
       message: (req.query as any)?.message ?? null,
     })
   })

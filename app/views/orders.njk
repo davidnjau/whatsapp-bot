@@ -18,9 +18,22 @@
         {% elif o.status == 'cancelled' %}bg-red-100 text-red-800
         {% else %}bg-gray-200 text-gray-600{% endif %}">{{ o.status }}</span>
     </div>
-    <ul class="text-gray-600">
+    <ul class="space-y-2">
       {% for i in o.items %}
-      <li>• {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}</li>
+      <li class="flex items-center gap-2 text-gray-700">
+        <a href="/shop/img/{{ i.product_id }}" target="_blank" title="View photo">
+          <img src="/shop/img/{{ i.product_id }}" class="w-10 h-10 object-cover rounded hover:ring-2 hover:ring-emerald-500" alt="">
+        </a>
+        <span>
+          {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}
+          {% if i.conflict_orders.length %}
+          <span class="block text-xs text-red-700 font-medium">
+            ⚠ Conflict: dress #{{ i.product_id }} also in
+            {% for c in i.conflict_orders %}order #{{ c.id }} ({{ c.status }}){% if not loop.last %}, {% endif %}{% endfor %}
+          </span>
+          {% endif %}
+        </span>
+      </li>
       {% endfor %}
     </ul>
     <p class="text-gray-600">

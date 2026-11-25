@@ -22,6 +22,19 @@ greetings:
 fallback: |
   Samahani, sijaelewa vizuri. Reply with a number / Jibu kwa nambari:
 
+# Appended under the menu list. Reminds customers of the policy and how to
+# re-open the menu. Optional en/sw versions; base is Mix.
+menu_footer: |
+  ⚠️ No refunds / no exchanges — mtumba is sold as-is.
+  Reply "menu" anytime to see this list again.
+menu_footers:
+  en: |
+    ⚠️ No refunds / no exchanges — items sold as-is.
+    Reply "menu" anytime to see this list again.
+  sw: |
+    ⚠️ Hakuna refunds wala exchanges — mtumba inauzwa ilivyo.
+    Andika "menu" wakati wowote kuona orodha hii tena.
+
 after_hours: |
   Asante kwa ujumbe wako! Tuko offline kwa sasa — tutakujibu saa za kazi.
   Thanks for your message! We're currently offline and will reply during

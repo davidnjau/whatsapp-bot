@@ -36,25 +36,52 @@ async function clearSession(chatId: string): Promise<void> {
   await query('DELETE FROM chat_shop_sessions WHERE chat_id = $1', [chatId])
 }
 
+// Release any held dress and end an in-progress order (used by the "menu" command).
+export async function abandonShopSession(chatId: string): Promise<void> {
+  const session = await getSession(chatId)
+  if (!session) return
+  if (session.product_id) await releaseReservation(session.product_id, chatId)
+  await clearSession(chatId)
+}
+
 function reply(chatId: string, text: string) {
   return enqueueSend({ chatId, module: 'shop', kind: 'order_chat', payload: { type: 'text', text, typing: true } })
 }
 
+const CATALOGUE_IMAGE_LIMIT = 8
+
 // Exported so the support menu (reply "1") can show the catalogue too.
+// Sends each available dress as a photo with its label, then an instructions line.
 export async function sendCatalogueTo(chatId: string) {
-  const products = (await listAvailable(chatId)).slice(0, 10)
-  if (products.length === 0) {
+  const available = await listAvailable(chatId)
+  if (available.length === 0) {
     await reply(chatId, 'Hakuna dresses available kwa sasa — check back soon! 💕 Or see the shop: ' + `${config.appBaseUrl}/shop`)
     return
   }
-  const lines = products.map(
-    (p) => `#${p.id} — ${p.size ? `SIZE ${p.size}, ` : ''}${formatKsh(p.price_ksh ?? 0)}`,
-  )
+  const products = available.slice(0, CATALOGUE_IMAGE_LIMIT)
+  for (const p of products) {
+    await enqueueSend({
+      chatId,
+      module: 'shop',
+      kind: 'catalogue_photo',
+      payload: {
+        type: 'image',
+        file: { url: `${config.internalBaseUrl}/shop/img/${p.id}` },
+        caption:
+          `#${p.id} • ${p.size ? `SIZE ${p.size} • ` : ''}${formatKsh(p.price_ksh ?? 0)}\n` +
+          `Reply #${p.id} to reserve it.`,
+      },
+    })
+  }
+  const more =
+    available.length > products.length
+      ? `\n(+${available.length - products.length} more at the shop link)`
+      : ''
   await reply(
     chatId,
-    `Here's what's available 💃\n${lines.join('\n')}\n\n` +
-      `Reply with a dress number to reserve it (e.g. #${products[0].id}), or "mine".\n` +
-      `See photos & more: ${config.appBaseUrl}/shop`,
+    `☝️ Reply with a dress number to reserve it (e.g. #${products[0].id}), or "mine".${more}\n` +
+      `See all & photos: ${config.appBaseUrl}/shop\n` +
+      `⚠️ No refunds / no exchanges — mtumba sold as-is.`,
   )
 }
 
@@ -185,7 +212,7 @@ async function advanceSession(
     }
     await setSession({ ...session, state: 'awaiting_location', delivery_option: option })
     const prompt: Record<DeliveryOption, string> = {
-      agent: 'Which Pickup Mtaani agent/stage is nearest you? (e.g. "Roysambu, TRM stage")',
+      agent: 'Which Pickup Mtaani agent/stage is nearest you? Type the area or agent name (e.g. "Roysambu, TRM stage") and we\'ll confirm the exact agent & fee for you.',
       doorstep: 'What delivery address should the rider use? (building/estate + landmark)',
       errand: 'Which SACCO/courier and town should we send it through? (e.g. "Easy Coach, Eldoret")',
     }
