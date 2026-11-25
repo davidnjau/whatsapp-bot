@@ -268,8 +268,8 @@ function dressView(id){
       <div class="dactions" ${st(6)}>${sold?`<button class="btn soft block" disabled>Sold — someone got lucky</button>`:bagged?`<a class="btn soft block" href="#bag">${ic('bag')} In your bag — view</a>`:`<button class="btn primary block" data-add="${d.id}" data-from="gallery">${ic('bag')} Add to bag · ${ksh(d.price)}</button>`}
         <button class="btn outline block" data-tryon="${i}">Try it on in the fitting room</button></div>
       <ul class="dnotes" ${st(7)}><li>${ic('truck')}<span>Free pick-up in Nairobi CBD, Ksh 200 in Nairobi, Ksh 350 countrywide.</span></li><li>${ic('shield')}<span>Pre-loved and one of a kind. <strong>No refunds or exchanges</strong>, so please check the size.</span></li><li>${ic('chat')}<span>We confirm every order on WhatsApp.</span></li></ul>
-      <div class="advisor" ${st(8)} style="margin-top:4px;border-top:1px solid var(--border);padding-top:16px">
-        <h3 style="font-size:16px;margin:0 0 4px">Ask the stylist</h3>
+      <div class="advisor" ${st(8)} style="margin-top:18px;background:var(--sand);border:1px solid var(--border);border-radius:16px;padding:18px">
+        <h3 style="font-size:17px;font-weight:500;margin:0 0 4px;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--olive,#5c6534)"></span>Ask the stylist</h3>
         <p class="small" style="margin:0 0 10px">A personal answer for <b>Ksh ${window.DN_STYLIST_PRICE}</b> — get it here or on WhatsApp with the photo.</p>
         <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:14px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="styCh" value="web" checked> Here on the page</label>

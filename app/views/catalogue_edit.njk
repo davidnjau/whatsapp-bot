@@ -5,6 +5,7 @@
   <div>
     <p class="e-eyebrow" style="margin:0 0 8px">Dresses · review</p>
     <h1 class="e-h1" style="margin:0">Dress #{{ product.id }}</h1>
+    <p class="e-muted" style="font-size:13px;margin:6px 0 0">Uploaded {{ product.created_at | date }}</p>
   </div>
   <a href="/admin/catalogue" class="e-btn">← Back to dresses</a>
 </div>
@@ -63,8 +64,15 @@
   <form method="post" action="/admin/catalogue/{{ product.id }}/media/upload" enctype="multipart/form-data"
         style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 20px">
     <input type="file" name="files" accept="image/*,video/*" multiple required style="font-size:14px">
+    <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Add as
+      <select name="kind" class="e-input" style="padding:8px 10px">
+        <option value="photo">Extra photo</option>
+        <option value="model">On a model</option>
+        <option value="mannequin">On the mannequin</option>
+      </select>
+    </label>
     <button class="e-btn e-btn-olive">Add photos / videos</button>
-    <span class="e-muted" style="font-size:12px">Add your own shots before (or instead of) AI enrichment.</span>
+    <span class="e-muted" style="font-size:12px">Mark the model &amp; mannequin shots so the fitting room shows them right. Videos are detected automatically.</span>
   </form>
 
   {% if media.length %}

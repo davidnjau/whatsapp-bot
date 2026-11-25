@@ -1,4 +1,5 @@
 import { query } from '../../db.js'
+import { getBool } from '../../lib/settings.js'
 import { deleteMedia } from '../status/media.js'
 import { productName } from './label.js'
 import type { Product } from './index.js'
@@ -155,8 +156,12 @@ export async function deleteProductMedia(productId: number, rowId: number): Prom
 // The public catalogue for the shop SPA: published + sold dresses (sold ones
 // keep the vintage look), newest first, each with its gallery.
 export async function getCatalogue(): Promise<DressDTO[]> {
+  const hideSold = await getBool('hide_sold')
   const res = await query<Product>(
-    `SELECT * FROM products WHERE status IN ('published','sold') ORDER BY (status = 'sold'), id DESC`,
+    `SELECT * FROM products
+     WHERE status = 'published' OR ($1 = false AND status = 'sold')
+     ORDER BY (status = 'sold'), id DESC`,
+    [hideSold],
   )
   const media = await mediaByProduct(res.rows.map((p) => p.id))
   return res.rows.map((p) => buildDress(p, media.get(p.id) ?? []))

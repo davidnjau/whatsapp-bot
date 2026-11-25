@@ -118,15 +118,54 @@ export async function listProducts(status?: string): Promise<Product[]> {
 
 export type CatalogueFilter = 'all' | 'needs_review' | 'draft' | 'published' | 'sold'
 
-export async function listCatalogue(filter: CatalogueFilter): Promise<Product[]> {
-  const where =
-    filter === 'needs_review'
+// Upload-time windows for the catalogue list.
+export type CatalogueSince = 'all' | '1w' | '2w' | '3w' | '4w' | '1mo' | 'older'
+const SINCE_SQL: Record<CatalogueSince, string | null> = {
+  all: null,
+  '1w': `created_at >= now() - interval '7 days'`,
+  '2w': `created_at >= now() - interval '14 days'`,
+  '3w': `created_at >= now() - interval '21 days'`,
+  '4w': `created_at >= now() - interval '28 days'`,
+  '1mo': `created_at >= now() - interval '1 month'`,
+  older: `created_at < now() - interval '1 month'`,
+}
+
+export interface CatalogueQuery {
+  filter: CatalogueFilter
+  search?: string
+  since?: CatalogueSince
+  page?: number
+  pageSize?: number
+}
+
+export async function listCatalogue(q: CatalogueQuery): Promise<{ rows: Product[]; total: number }> {
+  const clauses: string[] = []
+  const params: unknown[] = []
+  clauses.push(
+    q.filter === 'needs_review'
       ? `needs_review = true AND status != 'archived'`
-      : filter === 'all'
+      : q.filter === 'all'
         ? `status != 'archived'`
-        : `status = '${filter}'`
-  const res = await query<Product>(`SELECT * FROM products WHERE ${where} ORDER BY id DESC`)
-  return res.rows
+        : `status = $${params.push(q.filter)}`,
+  )
+  const sinceSql = SINCE_SQL[q.since ?? 'all']
+  if (sinceSql) clauses.push(sinceSql)
+  const term = (q.search ?? '').trim()
+  if (term) {
+    const like = `%${term}%`
+    clauses.push(`(title ILIKE $${params.push(like)} OR CAST(id AS text) = $${params.push(term)})`)
+  }
+  const where = clauses.join(' AND ')
+  const pageSize = q.pageSize ?? 12
+  const page = Math.max(1, q.page ?? 1)
+
+  const totalRes = await query<{ count: string }>(`SELECT count(*) FROM products WHERE ${where}`, params)
+  const total = Number(totalRes.rows[0].count)
+  const res = await query<Product>(
+    `SELECT * FROM products WHERE ${where} ORDER BY id DESC LIMIT $${params.push(pageSize)} OFFSET $${params.push((page - 1) * pageSize)}`,
+    params,
+  )
+  return { rows: res.rows, total }
 }
 
 export async function catalogueCounts(): Promise<Record<string, number>> {

@@ -7,6 +7,9 @@
     <h1 class="e-h1" style="margin:0">Dresses</h1>
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <form method="post" action="/admin/catalogue/hide-sold" title="Toggle whether sold dresses appear on the public shop">
+      <button class="e-pill {{ 'on' if hideSold }}">{{ 'Sold: hidden on shop' if hideSold else 'Sold: shown on shop' }}</button>
+    </form>
     <form method="post" action="/admin/catalogue/publish-all"
           onsubmit="return confirm('Publish all reviewed drafts to WhatsApp Status and the shop?')">
       <button class="e-btn e-btn-dark">Publish all</button>
@@ -40,9 +43,28 @@
     { key: 'published', label: 'Published' },
     { key: 'sold', label: 'Sold' }
   ] %}
-  <a href="/admin/catalogue?filter={{ f.key }}" class="e-pill {{ 'on' if filter == f.key }}">
+  <a href="/admin/catalogue?filter={{ f.key }}{% if since != 'all' %}&since={{ since }}{% endif %}{% if search %}&q={{ search | urlencode }}{% endif %}" class="e-pill {{ 'on' if filter == f.key }}">
     {{ f.label }}{% if counts[f.key] %} ({{ counts[f.key] }}){% endif %}
   </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px">
+  <form method="get" action="/admin/catalogue" style="display:flex;gap:8px;flex:1 1 260px;min-width:0">
+    <input type="hidden" name="filter" value="{{ filter }}">
+    <input type="hidden" name="since" value="{{ since }}">
+    <input name="q" value="{{ search }}" placeholder="Search title or #id" class="e-input" style="flex:1 1 auto;min-width:0">
+    <button class="e-btn">Search</button>
+    {% if search %}<a href="/admin/catalogue?filter={{ filter }}&since={{ since }}" class="e-btn">Clear</a>{% endif %}
+  </form>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+  {% for s in [
+    { k: 'all', l: 'Any time' }, { k: '1w', l: '1 week' }, { k: '2w', l: '2 weeks' },
+    { k: '3w', l: '3 weeks' }, { k: '4w', l: '4 weeks' }, { k: '1mo', l: '1 month' }, { k: 'older', l: 'Over a month' }
+  ] %}
+  <a href="/admin/catalogue?filter={{ filter }}&since={{ s.k }}{% if search %}&q={{ search | urlencode }}{% endif %}"
+     class="e-pill {{ 'on' if since == s.k }}" style="min-height:32px;font-size:12px">{{ s.l }}</a>
   {% endfor %}
 </div>
 
@@ -61,6 +83,7 @@
           {% else %}background:var(--panel);color:var(--ink){% endif %}">{{ p.status }}</span>
         {% if p.needs_review %}<span class="e-tag" style="background:#f3dcd3;color:#7a1f2b">needs review</span>{% endif %}
         {% if p.ai_ingested_at %}<span class="e-tag" style="background:#eef0e4;color:var(--accent)">✨ AI</span>{% endif %}
+        <span class="e-muted" style="font-size:12px">{{ p.created_at | date }}</span>
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
           <form method="post" action="/admin/catalogue/{{ p.id }}/featured?filter={{ filter }}">
             <input type="hidden" name="featured" value="{{ 'off' if p.featured else 'on' }}">
@@ -102,4 +125,16 @@
   </p>
   {% endfor %}
 </div>
+
+{% if totalPages > 1 %}
+{% set base = '/admin/catalogue?filter=' + filter + '&since=' + since + ('&q=' + (search | urlencode) if search else '') %}
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:24px">
+  {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}" class="e-pill" style="min-height:36px">← Prev</a>{% endif %}
+  {% for n in range(1, totalPages + 1) %}
+  <a href="{{ base }}&page={{ n }}" class="e-pill {{ 'on' if n == page }}" style="min-height:36px;min-width:42px;justify-content:center">{{ n }}</a>
+  {% endfor %}
+  {% if page < totalPages %}<a href="{{ base }}&page={{ page + 1 }}" class="e-pill" style="min-height:36px">Next →</a>{% endif %}
+</div>
+{% endif %}
+<p class="e-muted" style="text-align:center;font-size:12px;margin-top:10px">{{ total }} dress(es){% if totalPages > 1 %} · page {{ page }} of {{ totalPages }}{% endif %}</p>
 {% endblock %}

@@ -57,7 +57,7 @@ h3{font-size:18px;font-weight:500;margin:0}
 
 /* fitting room */
 .stage{position:relative;background:radial-gradient(120% 80% at 50% 10%,var(--ivory) 0%,oklch(95% .02 70) 55%,oklch(92% .028 65) 100%);padding-top:36px;overflow:hidden}
-.stage::after{content:"";position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(to bottom,transparent,oklch(91% .03 65 / .7));pointer-events:none}
+.stage::after{content:"";position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(to bottom,oklch(91% .03 65 / 0) 0%,oklch(91% .03 65 / .55) 30%,oklch(91% .03 65 / .2) 55%,oklch(91% .03 65 / 0) 80%);pointer-events:none}
 .stage-head{text-align:center;position:relative;z-index:2}
 .stage-head .eyebrow{color:var(--charcoal);margin-bottom:8px}
 .ring{position:relative;height:clamp(380px,52vw,520px);perspective:1400px;touch-action:pan-y;cursor:grab;user-select:none;z-index:1}
@@ -82,7 +82,7 @@ h3{font-size:18px;font-weight:500;margin:0}
 .specs dt{font-size:15px;color:var(--muted)}.specs dd{margin:0;font-weight:500}
 .note{font-size:14px;color:var(--muted);margin:0 0 20px}
 .actions{display:flex;gap:10px}.actions .btn{flex:1;white-space:nowrap;padding:0 16px}
-.stage-bottom{padding-bottom:40px;background:linear-gradient(to bottom,transparent 0,transparent 56px,var(--ivory) 56px)}
+.stage-bottom{padding-bottom:40px;background:linear-gradient(to bottom,oklch(98.5% .006 80 / 0) 0px,oklch(98.5% .006 80 / .6) 90px,var(--ivory) 180px)}
 
 /* drop grid */
 .section{padding:clamp(48px,7vw,80px) 0}

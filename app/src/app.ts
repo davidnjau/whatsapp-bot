@@ -36,6 +36,17 @@ export function buildApp() {
   app.register(fastifyView, {
     engine: { nunjucks },
     root: path.resolve('views'),
+    options: {
+      onConfigure: (env: { addFilter: (name: string, fn: (v: unknown) => string) => void }) => {
+        env.addFilter('date', (v) => {
+          if (!v) return ''
+          const d = new Date(v as string)
+          return isNaN(d.getTime())
+            ? String(v)
+            : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+        })
+      },
+    },
   })
 
   app.register(webhookRoutes)

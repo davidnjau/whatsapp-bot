@@ -14,8 +14,10 @@ import {
   updateProduct,
   updateProductDetails,
   type CatalogueFilter,
+  type CatalogueSince,
   type Product,
 } from '../modules/shop/index.js'
+import { getBool, setSetting } from '../lib/settings.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
 import { saveMedia } from '../modules/status/media.js'
@@ -28,24 +30,64 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // --- catalogue ---
   const FILTERS: CatalogueFilter[] = ['all', 'needs_review', 'draft', 'published', 'sold']
+  const SINCES: CatalogueSince[] = ['all', '1w', '2w', '3w', '4w', '1mo', 'older']
   const parseFilter = (q: unknown): CatalogueFilter =>
     FILTERS.includes(q as CatalogueFilter) ? (q as CatalogueFilter) : 'all'
+  const parseSince = (q: unknown): CatalogueSince =>
+    SINCES.includes(q as CatalogueSince) ? (q as CatalogueSince) : 'all'
+  const PAGE_SIZE = 12
 
-  async function renderCatalogue(reply: any, filter: CatalogueFilter, extra: Record<string, unknown>) {
-    const [products, counts] = await Promise.all([listCatalogue(filter), catalogueCounts()])
+  async function renderCatalogue(
+    reply: any,
+    q: { filter: CatalogueFilter; search?: string; since?: CatalogueSince; page?: number },
+    extra: Record<string, unknown>,
+  ) {
+    const page = Math.max(1, q.page ?? 1)
+    const [{ rows, total }, counts, hideSold] = await Promise.all([
+      listCatalogue({ ...q, page, pageSize: PAGE_SIZE }),
+      catalogueCounts(),
+      getBool('hide_sold'),
+    ])
     return reply.view('catalogue.njk', {
       authed: true,
-      products,
+      products: rows,
       counts,
-      filter,
+      filter: q.filter,
+      search: q.search ?? '',
+      since: q.since ?? 'all',
+      page,
+      totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+      total,
+      hideSold,
       scan: null,
       message: null,
       ...extra,
     })
   }
 
-  app.get<{ Querystring: { filter?: string; message?: string } }>('/admin/catalogue', async (req, reply) => {
-    return renderCatalogue(reply, parseFilter(req.query.filter), { message: req.query.message ?? null })
+  app.get<{ Querystring: { filter?: string; q?: string; since?: string; page?: string; message?: string } }>(
+    '/admin/catalogue',
+    async (req, reply) => {
+      return renderCatalogue(
+        reply,
+        {
+          filter: parseFilter(req.query.filter),
+          search: typeof req.query.q === 'string' ? req.query.q : '',
+          since: parseSince(req.query.since),
+          page: Number(req.query.page) || 1,
+        },
+        { message: req.query.message ?? null },
+      )
+    },
+  )
+
+  // Toggle whether sold dresses show on the public shop.
+  app.post('/admin/catalogue/hide-sold', async (_req, reply) => {
+    const cur = await getBool('hide_sold')
+    await setSetting('hide_sold', cur ? 'false' : 'true')
+    return reply.redirect(
+      `/admin/catalogue?message=${encodeURIComponent(`Sold dresses are now ${cur ? 'shown' : 'hidden'} on the shop`)}`,
+    )
   })
 
   app.post('/admin/catalogue/scan', async (_req, reply) => {
@@ -55,7 +97,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       scan = { imported: [], skipped: 0, failed: [{ file: 'inbox', error: (err as Error).message }] }
     }
-    return renderCatalogue(reply, 'all', { scan })
+    return renderCatalogue(reply, { filter: 'all' }, { scan })
   })
 
   // Upload photos straight from the browser — each is OCR'd and added as a
@@ -81,7 +123,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       failed.push({ file: 'upload', error: (err as Error).message })
     }
-    return renderCatalogue(reply, 'all', { scan: { imported, skipped: 0, failed } })
+    return renderCatalogue(reply, { filter: 'all' }, { scan: { imported, skipped: 0, failed } })
   })
 
   app.post('/admin/catalogue/publish-all', async (_req, reply) => {
@@ -140,26 +182,35 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
-  // Manually add photos/videos to a product's gallery.
+  // Manually add photos/videos to a product's gallery. A "kind" field lets the
+  // owner mark a photo as the model or mannequin shot so the fitting room shows
+  // the right image; videos are always kind 'video'.
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/media/upload', async (req, reply) => {
     const productId = Number(req.params.id)
-    let added = 0
+    let kind = 'photo'
+    const files: Array<{ name: string; mime: string; buf: Buffer }> = []
     try {
-      for await (const part of req.files()) {
-        const mime = part.mimetype || ''
-        if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
-          await part.toBuffer().catch(() => {})
-          continue
+      for await (const part of req.parts()) {
+        if (part.type === 'field' && part.fieldname === 'kind') {
+          kind = String((part as { value: unknown }).value)
+        } else if (part.type === 'file') {
+          const mime = part.mimetype || ''
+          if (mime.startsWith('image/') || mime.startsWith('video/')) {
+            files.push({ name: part.filename || 'upload', mime, buf: await part.toBuffer() })
+          } else {
+            await part.toBuffer().catch(() => {})
+          }
         }
-        const buf = await part.toBuffer()
-        const media = await saveMedia(part.filename || 'upload', mime, buf)
-        await addProductMedia(productId, media.id, mime.startsWith('video/') ? 'video' : 'photo')
-        added++
       }
     } catch {
-      /* ignore partial upload errors; report what landed */
+      /* ignore partial upload errors; save what landed */
     }
-    return reply.redirect(`/admin/catalogue/${productId}/edit?message=${encodeURIComponent(`Added ${added} file(s)`)}`)
+    const photoKind = ['model', 'mannequin'].includes(kind) ? kind : 'photo'
+    for (const f of files) {
+      const media = await saveMedia(f.name, f.mime, f.buf)
+      await addProductMedia(productId, media.id, f.mime.startsWith('video/') ? 'video' : photoKind)
+    }
+    return reply.redirect(`/admin/catalogue/${productId}/edit?message=${encodeURIComponent(`Added ${files.length} file(s)`)}`)
   })
 
   // Delete one gallery item.
