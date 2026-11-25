@@ -6,7 +6,14 @@ import { enqueueSend } from '../../queue/index.js'
 import { generateAiReply, getProvider } from './ai.js'
 import { startHandoff, setBotPaused } from './handoff.js'
 import { isWithinBusinessHours } from './hours.js'
-import { loadMenu, matchMenuItem, menuList } from './menu.js'
+import {
+  greetingFor,
+  loadMenu,
+  matchMenuItem,
+  menuList,
+  parseLanguageChoice,
+  type Lang,
+} from './menu.js'
 import { isAngry, parseStaffCommand, wantsHuman } from './triggers.js'
 import { handleShopMessage, sendCatalogueTo } from '../shop/chat.js'
 
@@ -29,10 +36,11 @@ export async function handleOwnMessage(chatId: string, body: string) {
 export async function handleInboundDm(msg: InboundDm) {
   if (!config.botEnabled) return
 
-  const chat = await query<{ bot_paused: boolean; last_hours_notice_at: Date | null }>(
-    'SELECT bot_paused, last_hours_notice_at FROM chats WHERE chat_id = $1',
-    [msg.chatId],
-  )
+  const chat = await query<{
+    bot_paused: boolean
+    last_hours_notice_at: Date | null
+    language: string | null
+  }>('SELECT bot_paused, last_hours_notice_at, language FROM chats WHERE chat_id = $1', [msg.chatId])
   if (chat.rows[0]?.bot_paused) return
 
   const repliesLastHour = await query<{ count: string }>(
@@ -42,6 +50,22 @@ export async function handleInboundDm(msg: InboundDm) {
   )
   if (Number(repliesLastHour.rows[0].count) >= config.maxRepliesPerChatPerHour) {
     log.warn({ chatId: msg.chatId }, 'per-chat reply cap reached, staying silent')
+    return
+  }
+
+  const menu = await loadMenu()
+
+  // First contact: let the customer pick a language before anything else.
+  let lang = (chat.rows[0]?.language as Lang | null) ?? null
+  if (!lang) {
+    const pick = parseLanguageChoice(msg.body)
+    if (!pick) {
+      await reply(msg.chatId, menu.language_prompt.trim())
+      return
+    }
+    await query('UPDATE chats SET language = $2 WHERE chat_id = $1', [msg.chatId, pick])
+    lang = pick
+    await reply(msg.chatId, `${greetingFor(menu, lang).trim()}\n\n${menuList(menu, lang)}`)
     return
   }
 
@@ -57,8 +81,6 @@ export async function handleInboundDm(msg: InboundDm) {
     )
     if (handled) return
   }
-
-  const menu = await loadMenu()
 
   // Outside business hours: send the hours message (at most every 6h per chat), then still answer.
   let prefix = ''
@@ -99,8 +121,8 @@ export async function handleInboundDm(msg: InboundDm) {
       [msg.chatId],
     )
     const isFirstContact = Number(inboundCount.rows[0].count) <= 1
-    const header = isFirstContact ? menu.greeting.trim() : menu.fallback.trim()
-    return reply(msg.chatId, `${prefix}${header}\n\n${menuList(menu)}`)
+    const header = isFirstContact ? greetingFor(menu, lang).trim() : menu.fallback.trim()
+    return reply(msg.chatId, `${prefix}${header}\n\n${menuList(menu, lang)}`)
   }
 
   // AI mode

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { matchMenuItem, menuList, parseMenuYaml, type Menu } from '../src/modules/support/menu.js'
+import {
+  greetingFor,
+  matchMenuItem,
+  menuList,
+  parseLanguageChoice,
+  parseMenuYaml,
+  type Menu,
+} from '../src/modules/support/menu.js'
 
 const menu: Menu = {
   greeting: 'Welcome!',
@@ -43,6 +50,45 @@ describe('matchMenuItem', () => {
 describe('menuList', () => {
   it('renders numbered options', () => {
     expect(menuList(menu)).toBe('1. Prices\n2. Delivery\n0. Talk to a person')
+  })
+
+  it('uses localized titles when present, falling back to the base title', () => {
+    const localized: Menu = {
+      ...menu,
+      menu: [
+        { ...menu.menu[0], titles: { en: 'Prices', sw: 'Bei' } },
+        menu.menu[1],
+        menu.menu[2],
+      ],
+    }
+    expect(menuList(localized, 'sw')).toBe('1. Bei\n2. Delivery\n0. Talk to a person')
+    expect(menuList(localized, 'en')).toBe('1. Prices\n2. Delivery\n0. Talk to a person')
+    expect(menuList(localized, 'mix')).toBe('1. Prices\n2. Delivery\n0. Talk to a person')
+  })
+})
+
+describe('parseLanguageChoice', () => {
+  it('reads numbers and keywords', () => {
+    expect(parseLanguageChoice('1')).toBe('en')
+    expect(parseLanguageChoice('English')).toBe('en')
+    expect(parseLanguageChoice('2')).toBe('sw')
+    expect(parseLanguageChoice('Kiswahili')).toBe('sw')
+    expect(parseLanguageChoice('3')).toBe('mix')
+    expect(parseLanguageChoice('mchanganyiko')).toBe('mix')
+  })
+
+  it('returns null for anything else', () => {
+    expect(parseLanguageChoice('hello')).toBeNull()
+    expect(parseLanguageChoice('4')).toBeNull()
+  })
+})
+
+describe('greetingFor', () => {
+  it('prefers the localized greeting, falls back to base', () => {
+    const m: Menu = { ...menu, greeting: 'Karibu', greetings: { en: 'Welcome' } }
+    expect(greetingFor(m, 'en')).toBe('Welcome')
+    expect(greetingFor(m, 'sw')).toBe('Karibu') // no sw → base
+    expect(greetingFor(m, 'mix')).toBe('Karibu')
   })
 })
 

@@ -25,6 +25,8 @@ export interface Product {
   sold_at: Date | null
 }
 
+export const DEFAULT_PRICE_KSH = 1000
+
 const inboxDir = () => process.env.INBOX_DIR ?? path.resolve('inbox')
 const IMAGE_EXT = /\.(jpe?g|png|webp)$/i
 const MIME: Record<string, string> = {
@@ -56,18 +58,14 @@ export async function scanInbox(): Promise<ScanResult> {
       const mimetype = MIME[path.extname(file).toLowerCase()] ?? 'image/jpeg'
       const media = await saveMedia(file, mimetype, buffer)
       const info = await extractDressInfo(buffer, mimetype)
+      // DressNation's usual price is Ksh 1,000 — default it when OCR can't read
+      // the price, but still flag the product for review so the owner confirms.
+      const price = info.price ?? DEFAULT_PRICE_KSH
+      const needsReview = !info.size || info.price == null
       const inserted = await query<Product>(
         `INSERT INTO products (size, price_ksh, media_id, source_file, ocr_source, ocr_raw, needs_review)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [
-          info.size,
-          info.price,
-          media.id,
-          file,
-          info.source,
-          info.raw.slice(0, 2000),
-          !(info.size && info.price),
-        ],
+        [info.size, price, media.id, file, info.source, info.raw.slice(0, 2000), needsReview],
       )
       result.imported.push(inserted.rows[0])
       log.info(
@@ -144,12 +142,12 @@ export async function updateProduct(
   id: number,
   fields: { title: string | null; size: string | null; price_ksh: number | null },
 ): Promise<void> {
+  const needsReview = fields.size === null || fields.price_ksh === null
   await query(
     `UPDATE products
-     SET title = $2, size = $3, price_ksh = $4,
-         needs_review = ($3 IS NULL OR $4 IS NULL)
+     SET title = $2::text, size = $3::text, price_ksh = $4::int, needs_review = $5::boolean
      WHERE id = $1`,
-    [id, fields.title, fields.size, fields.price_ksh],
+    [id, fields.title, fields.size, fields.price_ksh, needsReview],
   )
 }
 

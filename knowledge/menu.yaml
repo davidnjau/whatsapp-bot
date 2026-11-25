@@ -1,6 +1,23 @@
+# Shown once, on first contact, to let the customer pick a language.
+language_prompt: |
+  Habari! 👋 Choose a language / Chagua lugha:
+  1. English 🇬🇧
+  2. Kiswahili 🇰🇪
+  3. Mix / Mchanganyiko
+
+# `greeting` / `title` are the default (Mix). Optional `greetings:` and per-item
+# `titles:` give English (en) and Swahili (sw) versions used when the customer
+# picks that language.
 greeting: |
   Karibu Dress Nation ~254! 💃 Quality mtumba dresses, delivered countrywide
   via Pickup Mtaani.
+greetings:
+  en: |
+    Welcome to Dress Nation ~254! 💃 Quality second-hand dresses, delivered
+    countrywide via Pickup Mtaani.
+  sw: |
+    Karibu Dress Nation ~254! 💃 Nguo bora za mtumba, tunatuma kote nchini
+    kupitia Pickup Mtaani.
 
 fallback: |
   Samahani, sijaelewa vizuri. Reply with a number / Jibu kwa nambari:
@@ -18,11 +35,13 @@ media_ack: |
 menu:
   - key: "1"
     title: "🛍️ Shop dresses / Nunua dress"
+    titles: { en: "🛍️ Shop dresses", sw: "🛍️ Nunua nguo" }
     keywords: [order, buy, available, iko, bado, nataka hii, niaje hii, how to order, kuagiza, shop, catalogue]
     action: catalogue
 
   - key: "2"
     title: "🚚 Delivery & fees / Usafirishaji"
+    titles: { en: "🚚 Delivery & fees", sw: "🚚 Usafirishaji & gharama" }
     keywords: [delivery, deliver, fee, pickup, mtaani, doorstep, usafirishaji, kufika, utafika, shipping]
     reply: |
       We deliver countrywide via Pickup Mtaani 🇰🇪
@@ -34,6 +53,7 @@ menu:
 
   - key: "3"
     title: "📦 Track my order / Kufuatilia order"
+    titles: { en: "📦 Track my order", sw: "📦 Fuatilia oda yangu" }
     keywords: [track, tracking, package code, parcel, imefika, iko wapi, status ya order]
     reply: |
       Once we drop your dress with Pickup Mtaani, we send you a package code —
@@ -43,6 +63,7 @@ menu:
 
   - key: "4"
     title: "📋 Policies / Sheria za duka"
+    titles: { en: "📋 Policies", sw: "📋 Sheria za duka" }
     keywords: [refund, exchange, return, kubadilisha, kurudisha, policy, sheria]
     reply: |
       Mtumba items are sold as they are: ❌ no refunds, ❌ no exchanges.
@@ -52,5 +73,6 @@ menu:
 
   - key: "0"
     title: "🙋 Talk to a person / Ongea na mtu"
+    titles: { en: "🙋 Talk to a person", sw: "🙋 Ongea na mtu" }
     keywords: [human, agent, person, mtu, msaada, owner, mwenye duka, customer care]
     handoff: true
