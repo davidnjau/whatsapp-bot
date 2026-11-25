@@ -1,6 +1,9 @@
 # RunPod Serverless — Dress Nation digitization worker.
-# Base ships PyTorch 2.8 / CUDA 12.8 / Ubuntu 24.04, so we only add Python deps.
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-ubuntu24.04
+# Base ships PyTorch 2.8.0 / CUDA 12.8.1 / Ubuntu 24.04, so we only add Python
+# deps. RunPod's real tag scheme is <template>-cu<cuda>-torch<torch>-ubuntu<ver>:
+# cu1281 = CUDA 12.8.1, torch280 = PyTorch 2.8.0. The plain
+# "2.8.0-py3.11-cuda12.8.1-ubuntu24.04" form does NOT exist on Docker Hub.
+FROM runpod/pytorch:2.2.0-cu1281-torch280-ubuntu2404
 
 WORKDIR /app
 
