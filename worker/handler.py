@@ -1,0 +1,223 @@
+"""Dress Nation digitization worker — RunPod serverless handler.
+
+Routes on event["input"]["task"]:
+  - ingest_product   : cutout + studio images, e-commerce copy, fit profile, embedding
+  - fit_advisor      : size/fit recommendation for a customer question
+  - styling_advisor  : how-to-style advice (advice, not product upsell)
+  - virtual_tryon    : deferred in this build
+
+Images are returned inline as base64 (cutout_b64 / studio_b64); the backend
+persists them. (To upload to S3/MinIO instead, add a boto3 helper and return
+URLs — see README.)
+"""
+import base64
+import io
+import json
+import re
+import time
+import traceback
+
+import requests
+import runpod
+import torch
+from PIL import Image
+from torchvision import transforms
+
+from model_manager import DEVICE, MANAGER
+
+# ---------- helpers ----------
+
+def download_image(url: str) -> Image.Image:
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return Image.open(io.BytesIO(resp.content)).convert("RGB")
+
+
+def pil_to_b64(img: Image.Image, fmt: str = "PNG") -> str:
+    buf = io.BytesIO()
+    img.save(buf, format=fmt)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def parse_json(text: str) -> dict:
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        return {}
+    blob = match.group(0)
+    try:
+        return json.loads(blob)
+    except Exception:
+        try:
+            return json.loads(re.sub(r",\s*([}\]])", r"\1", blob))  # drop trailing commas
+        except Exception:
+            return {}
+
+
+# ---------- BiRefNet cutout ----------
+_BIREFNET_TF = transforms.Compose(
+    [
+        transforms.Resize((1024, 1024)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ]
+)
+
+
+def run_birefnet(img: Image.Image) -> tuple[Image.Image, Image.Image]:
+    model = MANAGER.get("birefnet")["model"]
+    x = _BIREFNET_TF(img).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        pred = model(x)[-1].sigmoid().cpu()[0].squeeze()
+    mask = transforms.ToPILImage()(pred).resize(img.size)
+    cutout = img.convert("RGBA")
+    cutout.putalpha(mask)
+    studio = Image.new("RGB", img.size, (255, 255, 255))
+    studio.paste(cutout, mask=mask)
+    return cutout, studio
+
+
+# ---------- Qwen2.5-VL (vision + text) ----------
+
+def run_qwen(system: str, user: str, img: Image.Image | None = None, max_new_tokens: int = 768) -> str:
+    bundle = MANAGER.get("qwen")
+    model, processor = bundle["model"], bundle["processor"]
+    content: list[dict] = []
+    if img is not None:
+        content.append({"type": "image", "image": img})
+    content.append({"type": "text", "text": user})
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": content}]
+
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    from qwen_vl_utils import process_vision_info
+
+    image_inputs, video_inputs = process_vision_info(messages)
+    inputs = processor(
+        text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt"
+    ).to(model.device)
+    with torch.no_grad():
+        generated = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
+    trimmed = [out[len(inp):] for inp, out in zip(inputs.input_ids, generated)]
+    return processor.batch_decode(trimmed, skip_special_tokens=True)[0].strip()
+
+
+# ---------- FashionSigLIP embedding ----------
+
+def run_siglip(img: Image.Image) -> list[float]:
+    bundle = MANAGER.get("siglip")
+    model, processor = bundle["model"], bundle["processor"]
+    inputs = processor(images=[img], return_tensors="pt").to(DEVICE)
+    with torch.no_grad():
+        feats = (
+            model.get_image_features(**inputs)
+            if hasattr(model, "get_image_features")
+            else model(**inputs).image_embeds
+        )
+    feats = feats / feats.norm(dim=-1, keepdim=True)
+    return feats[0].cpu().float().tolist()
+
+
+# ---------- tasks ----------
+
+def ingest_product(inp: dict) -> dict:
+    t0 = time.time()
+    img = download_image(inp["image_url"])
+    cutout, studio = run_birefnet(img)
+
+    sizes = ", ".join(inp.get("available_sizes") or []) or "unspecified"
+    system = (
+        "You are a senior fashion e-commerce merchandiser and copywriter for a "
+        "Kenyan women's boutique. You write warm, honest, persuasive catalogue copy."
+    )
+    user = (
+        f"Analyse this {inp.get('category', 'dress')} photo. "
+        f"Price: {inp.get('price', 'unknown')}. Available sizes: {sizes}.\n"
+        "Respond with ONLY a JSON object, no prose, with exactly these keys:\n"
+        "{\n"
+        '  "title": "catchy e-commerce product title",\n'
+        '  "whatsapp_description": "clean persuasive bulleted copy for WhatsApp Business '
+        "(include price, sizes, neckline, sleeve style, length)\",\n"
+        '  "social_caption": "engaging Instagram/TikTok caption with styling tips and hashtags",\n'
+        '  "occasions": ["3-5 occasions"],\n'
+        '  "colour": "main colour(s)",\n'
+        '  "length": "e.g. Midi, below the knee",\n'
+        '  "fit_profile": { "estimated_fabric": "", "stretch_level": "none|low|medium|high", '
+        '"silhouette": "bodycon|a-line|flowy|structured", "fit_notes": "" }\n'
+        "}"
+    )
+    meta = parse_json(run_qwen(system, user, img))
+    embedding = run_siglip(img)
+    return {
+        "cutout_b64": pil_to_b64(cutout, "PNG"),
+        "studio_b64": pil_to_b64(studio, "PNG"),
+        "title": meta.get("title"),
+        "whatsapp_description": meta.get("whatsapp_description"),
+        "social_caption": meta.get("social_caption"),
+        "occasions": meta.get("occasions"),
+        "colour": meta.get("colour"),
+        "length": meta.get("length"),
+        "fit_profile": meta.get("fit_profile", {}),
+        "embedding": embedding,
+        "exec_ms": int((time.time() - t0) * 1000),
+    }
+
+
+def fit_advisor(inp: dict) -> dict:
+    t0 = time.time()
+    system = (
+        "You are a warm, honest boutique stylist helping a customer pick the right "
+        "size. Be concise and friendly, ready to send on WhatsApp. Never oversell — "
+        "if a dress may not fit, say so kindly."
+    )
+    user = (
+        f"Customer says: {inp.get('customer_message', '')}\n"
+        f"Product: {inp.get('product_title', '')}\n"
+        f"Available sizes: {inp.get('available_sizes', [])}\n"
+        f"Size chart: {json.dumps(inp.get('size_chart') or {})}\n"
+        f"Fit profile: {json.dumps(inp.get('fit_profile') or {})}\n"
+        "Respond with ONLY JSON: "
+        '{"recommended_size": "", "confidence": "high|medium|low", "stylist_reply": ""}'
+    )
+    meta = parse_json(run_qwen(system, user))
+    meta["exec_ms"] = int((time.time() - t0) * 1000)
+    return meta
+
+
+def styling_advisor(inp: dict) -> dict:
+    t0 = time.time()
+    system = (
+        "You are a boutique stylist giving friendly advice on how to wear and "
+        "complete a look (shoes, jewellery, bag, layering). Give genuine styling "
+        "guidance — do NOT push the customer to buy more items."
+    )
+    user = (
+        f"Dress: {inp.get('product_title', '')}\n"
+        f"Colour: {inp.get('colour', '')}\n"
+        f"Occasions: {inp.get('occasions', [])}\n"
+        f"Fit profile: {json.dumps(inp.get('fit_profile') or {})}\n"
+        f"Occasion of interest: {inp.get('occasion', 'any')}\n"
+        "Respond with ONLY JSON: "
+        '{"styling_tips": ["..."], "by_occasion": {"Office": "...", "Evening": "..."}}'
+    )
+    meta = parse_json(run_qwen(system, user))
+    meta["exec_ms"] = int((time.time() - t0) * 1000)
+    return meta
+
+
+def handler(event: dict) -> dict:
+    inp = event.get("input") or {}
+    task = inp.get("task")
+    try:
+        if task == "ingest_product":
+            return ingest_product(inp)
+        if task == "fit_advisor":
+            return fit_advisor(inp)
+        if task == "styling_advisor":
+            return styling_advisor(inp)
+        if task == "virtual_tryon":
+            return {"error": "virtual_tryon is not enabled in this worker build"}
+        return {"error": f"unknown task: {task!r}"}
+    except Exception as exc:  # surface a clean error to the caller
+        return {"error": str(exc), "trace": traceback.format_exc()[-1500:]}
+
+
+runpod.serverless.start({"handler": handler})
