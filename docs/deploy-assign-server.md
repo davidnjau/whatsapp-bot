@@ -76,6 +76,21 @@ just queues harmlessly.
    then persists in the `waha_sessions` volume across redeploys.
 3. Drop product photos into `INBOX_DIR`, then Admin → Catalogue → Scan inbox.
 
+## Gotchas hit on the legacyhomes deploy (keep in mind)
+
+- **Newer WAHA validates webhook URLs strictly.** WAHA ≥ 2026.10 rejects a
+  single-label host (e.g. `http://dressnation_app:8080/...`) with
+  `400 … url must be a URL address`. Set `WEBHOOK_URL` and `INTERNAL_BASE_URL`
+  in `.env` to the **public subdomain** (`https://dressnation.legacyhomes.live…`)
+  — valid format, and the production-correct path once Caddy is live.
+- **Don't ship with macOS `tar`.** It adds AppleDouble `._*` sidecar files that
+  end in `.sql` and crash migrations. Use `COPYFILE_DISABLE=1 tar … --exclude='._*'`,
+  or just `git clone` on the server. (The migration/inbox loaders now skip
+  dotfiles defensively, but clean transfers are still best.)
+- **Unambiguous names across networks.** Because the app joins `staging_default`
+  too, the DB host is `dressnation_postgres` (not `postgres`, which also exists
+  on the staging network) — set via the prod override's container names.
+
 ## Rollback / ops
 
 - Logs: `docker compose logs -f app` (or `waha`).

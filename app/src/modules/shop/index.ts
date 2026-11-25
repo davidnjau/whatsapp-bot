@@ -44,7 +44,7 @@ export interface ScanResult {
 
 export async function scanInbox(): Promise<ScanResult> {
   const dir = inboxDir()
-  const files = (await readdir(dir)).filter((f) => IMAGE_EXT.test(f)).sort()
+  const files = (await readdir(dir)).filter((f) => IMAGE_EXT.test(f) && !f.startsWith('.')).sort()
   const result: ScanResult = { imported: [], skipped: 0, failed: [] }
 
   for (const file of files) {

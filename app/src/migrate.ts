@@ -15,7 +15,11 @@ export async function runMigrations(dir = path.resolve('migrations')) {
     const applied = new Set(
       (await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name),
     )
-    const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort()
+    // Skip dotfiles (e.g. macOS AppleDouble "._*.sql" sidecars) — they end in
+    // .sql but are binary and would corrupt the protocol.
+    const files = (await readdir(dir))
+      .filter((f) => f.endsWith('.sql') && !f.startsWith('.'))
+      .sort()
     for (const file of files) {
       if (applied.has(file)) continue
       const sql = await readFile(path.join(dir, file), 'utf8')
