@@ -16,8 +16,12 @@ ENV HF_HOME=/runpod-volume/models \
     TOKENIZERS_PARALLELISM=false
 
 COPY requirements.txt .
+# The base image's cryptography is distutils-installed (no RECORD), so pip can't
+# uninstall it when a dep wants a newer one. Install it fresh first with
+# --ignore-installed so the later resolve doesn't try (and fail) to remove it.
 RUN pip install --no-cache-dir -U pip && \
     pip install --no-cache-dir hf_transfer && \
+    pip install --no-cache-dir --ignore-installed cryptography && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY model_manager.py handler.py ./
