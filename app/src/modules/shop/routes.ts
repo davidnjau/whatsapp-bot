@@ -19,6 +19,7 @@ import {
 import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
+import { getValidCoupon } from './coupons.js'
 import { fitAdvice, stylingAdvice, type FitAdvice, type StylingAdvice } from './advisor.js'
 
 const CART_COOKIE = 'cart_id'
@@ -157,6 +158,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
         del: z.enum(['pickup', 'nairobi', 'country']),
         area: z.string().default(''),
         method: z.enum(['stk', 'till']).default('stk'),
+        coupon: z.string().optional(),
       })
       .safeParse(req.body ?? {})
     if (!form.success) return reply.send({ error: 'Please check your details and try again.' })
@@ -164,7 +166,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     if (!cartId) return reply.send({ error: 'Your bag is empty.' })
     let order
     try {
-      order = await createShopOrder(cartId, form.data)
+      order = await createShopOrder(cartId, form.data, form.data.coupon)
     } catch (err) {
       return reply.send({ error: (err as Error).message })
     }
@@ -233,6 +235,14 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
       return reply.send({ sent: true })
     }
     return reply.send({ mode, advice })
+  })
+
+  // Validate a coupon code at checkout → { valid, percent } or { valid:false }.
+  app.get<{ Params: { code: string } }>('/shop/api/coupon/:code', async (req, reply) => {
+    const coupon = await getValidCoupon(req.params.code)
+    return reply.header('Cache-Control', 'no-store').send(
+      coupon ? { valid: true, code: coupon.code, percent: coupon.percent } : { valid: false },
+    )
   })
 
   // Live status for a placed order (My orders tracker).

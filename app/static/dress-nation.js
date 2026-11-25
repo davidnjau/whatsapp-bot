@@ -16,7 +16,7 @@ const STATUSES=['Order placed','Payment confirmed','Dispatched','Delivered'];
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem('dn_'+k))??d}catch(e){return d}};
 const save=(k,v)=>{try{localStorage.setItem('dn_'+k,JSON.stringify(v))}catch(e){}};
 const S={bag:load('bag',[]),orders:load('orders',[]),sold:load('sold',[]),view:'mq',size:'all',cur:0,
-  gi:0,gfor:0,form:{name:'',phone:'',del:'nairobi',area:'',agree:false},pay:{mode:'stk',code:'',state:'idle'},admin:{tab:'orders',status:'Order placed'}};
+  gi:0,gfor:0,form:{name:'',phone:'',del:'nairobi',area:'',agree:false,coupon:'',couponPct:0},pay:{mode:'stk',code:'',state:'idle'},admin:{tab:'orders',status:'Order placed'}};
 const persist=()=>{save('bag',S.bag);save('orders',S.orders);save('sold',S.sold)};
 const isSold=id=>{const d=byId(id);return S.sold.includes(id)||!!(d&&d.sold);};
 const inBag=id=>S.bag.includes(id);
@@ -159,8 +159,8 @@ function bag(){
 
 /* ---------- DETAILS ---------- */
 const phoneOk=p=>/^(?:\+?254|0)(?:7|1)\d{8}$/.test(p.replace(/\s/g,''));
-function totals(){const items=S.bag.map(byId),sub=items.reduce((a,b)=>a+b.price,0),del=DELIVERY.find(x=>x.k===S.form.del);return{items,sub,del,total:sub+del.p}}
-function summaryBox(){const t=totals();return `<div class="summary">${t.items.map(d=>`<div class="row"><span>${esc(d.name)} · size ${d.size}</span><span class="v">${ksh(d.price)}</span></div>`).join('')}<hr><div class="row muted"><span>${t.del.t}</span><span class="v">${t.del.p?ksh(t.del.p):'Free'}</span></div><div class="row total"><span>Total</span><span class="v">${ksh(t.total)}</span></div></div>`}
+function totals(){const items=S.bag.map(byId),sub=items.reduce((a,b)=>a+b.price,0),del=DELIVERY.find(x=>x.k===S.form.del);const discount=S.form.couponPct?Math.round(sub*S.form.couponPct/100):0;return{items,sub,del,discount,total:sub-discount+del.p}}
+function summaryBox(){const t=totals();return `<div class="summary">${t.items.map(d=>`<div class="row"><span>${esc(d.name)} · size ${d.size}</span><span class="v">${ksh(d.price)}</span></div>`).join('')}${t.discount?`<div class="row" style="color:var(--olive,#5c6534)"><span>Coupon ${esc(S.form.coupon)} (−${S.form.couponPct}%)</span><span class="v">−${ksh(t.discount)}</span></div>`:''}<hr><div class="row muted"><span>${t.del.t}</span><span class="v">${t.del.p?ksh(t.del.p):'Free'}</span></div><div class="row total"><span>Total</span><span class="v">${ksh(t.total)}</span></div></div>`}
 function details(){
   if(!S.bag.length)return emptyView('bag','Nothing to check out yet','Add a dress to your bag first.','#shop','Go to the fitting room');
   const f=S.form;
@@ -174,6 +174,12 @@ function details(){
     <h3 style="font-size:16px;margin:28px 0 10px">Delivery</h3>
     ${DELIVERY.map(x=>`<button type="button" class="opt ${f.del===x.k?'on':''}" data-del="${x.k}" aria-pressed="${f.del===x.k}">${ic(x.i)}<span class="grow"><b style="font-weight:500">${x.t}</b><br><span class="small">${x.s}</span></span><span class="p">${x.p?ksh(x.p):'Free'}</span><span class="radio"></span></button>`).join('')}
     ${f.del==='pickup'?'':`<label class="f" for="farea">${f.del==='country'?'Town, area and landmark':'Area and landmark'}</label><input class="inp" id="farea" value="${esc(f.area)}">`}
+    <h3 style="font-size:16px;margin:28px 0 10px">Coupon</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="inp" id="coupon" placeholder="Have a code? e.g. CHRISTMAS" value="${esc(f.coupon)}" style="flex:1 1 180px;text-transform:uppercase">
+      <button type="button" class="btn soft" data-coupon>Apply</button>
+    </div>
+    <div id="couponMsg" class="small" style="margin-top:6px">${f.couponPct?`<span style="color:var(--olive,#5c6534)">✓ ${esc(f.coupon)} — ${f.couponPct}% off applied</span>`:''}</div>
     <div id="sumBox">${summaryBox()}</div>
     <div class="box"><h3 style="font-size:16px">No refunds, no exchanges</h3><p class="small" style="margin:4px 0 0">These are pre-loved, one-of-a-kind dresses. Please check the size before you pay.</p>
       <label class="check"><input type="checkbox" id="fagree" ${f.agree?'checked':''}> I understand and agree</label></div>
@@ -181,6 +187,17 @@ function details(){
   </form></div>`;
 }
 function canPay(){const f=S.form;return f.name.trim().length>1&&phoneOk(f.phone)&&f.agree&&(f.del==='pickup'||f.area.trim().length>1)}
+async function applyCoupon(){
+  const inp=document.getElementById('coupon'),msg=document.getElementById('couponMsg');
+  const code=((inp&&inp.value)||'').trim().toUpperCase();
+  const refresh=()=>{const sb=document.getElementById('sumBox');if(sb)sb.innerHTML=summaryBox();};
+  if(!code){S.form.coupon='';S.form.couponPct=0;if(msg)msg.innerHTML='';refresh();return}
+  if(msg)msg.innerHTML='<span class="small">Checking…</span>';
+  let r;try{r=await fetch('/shop/api/coupon/'+encodeURIComponent(code)).then(x=>x.json())}catch(e){r=null}
+  if(r&&r.valid){S.form.coupon=r.code;S.form.couponPct=r.percent;if(msg)msg.innerHTML='<span style="color:var(--olive,#5c6534)">✓ '+esc(r.code)+' — '+r.percent+'% off applied</span>';}
+  else{S.form.coupon='';S.form.couponPct=0;if(msg)msg.innerHTML='<span style="color:#b3261e">That code isn\'t valid.</span>';}
+  refresh();
+}
 
 /* ---------- PAYMENT ---------- */
 function payment(){
@@ -202,7 +219,7 @@ function payment(){
 async function placeOrder(method){
   let res;
   try{res=await fetch('/shop/api/order',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({name:S.form.name.trim(),phone:S.form.phone.trim(),del:S.form.del,area:S.form.area,method})}).then(r=>r.json());}
+    body:JSON.stringify({name:S.form.name.trim(),phone:S.form.phone.trim(),del:S.form.del,area:S.form.area,method,coupon:S.form.coupon})}).then(r=>r.json());}
   catch(e){S.pay.state='idle';toast('Could not reach the shop — please try again');render();return;}
   if(!res||res.error){S.pay.state='idle';toast((res&&res.error)||'Something went wrong — please try again');
     try{S.bag=await fetch('/shop/api/cart').then(r=>r.json()).then(d=>d.ids);}catch(e){}persist();badge();render();return;}
@@ -399,6 +416,7 @@ app.addEventListener('click',e=>{
   else if(ds.remove){const pid=+ds.remove;S.bag=S.bag.filter(x=>x!==pid);persist();badge();render();
     fetch('/shop/api/cart/remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:pid})}).catch(()=>{});}
   else if(ds.del){S.form.del=ds.del;render()}
+  else if(ds.coupon!==undefined){applyCoupon()}
   else if(ds.pm){S.pay.mode=ds.pm;render()}
   else if(ds.stk!==undefined){S.pay.state='waiting';render();setTimeout(()=>{if(S.pay.state==='waiting'&&route==='payment')placeOrder('stk')},3800)}
   else if(ds.till!==undefined){const c=(document.getElementById('mcode').value||'').trim().toUpperCase();S.pay.code=c;if(!/^[A-Z0-9]{10}$/.test(c)||!/[A-Z]/.test(c)){document.getElementById('codeErr').hidden=false;document.getElementById('mcode').classList.add('bad')}else placeOrder('till')}
@@ -416,7 +434,7 @@ app.addEventListener('click',e=>{
 app.addEventListener('input',e=>{
   const id=e.target.id,f=S.form;
   if(id==='fname')f.name=e.target.value;else if(id==='fphone'){f.phone=e.target.value;const bad=f.phone.replace(/\s/g,'').length>=10&&!phoneOk(f.phone);document.getElementById('phoneErr').hidden=!bad;e.target.classList.toggle('bad',bad)}
-  else if(id==='farea')f.area=e.target.value;else if(id==='fagree')f.agree=e.target.checked;
+  else if(id==='farea')f.area=e.target.value;else if(id==='fagree')f.agree=e.target.checked;else if(id==='coupon')f.coupon=e.target.value;
   else if(id==='mcode'){S.pay.code=e.target.value;document.getElementById('codeErr').hidden=true;e.target.classList.remove('bad')}
   const b=document.getElementById('toPay');if(b)b.disabled=!canPay();
 });

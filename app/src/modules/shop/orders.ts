@@ -5,6 +5,7 @@ import { toChatId } from '../../lib/phone.js'
 import { enqueueSend } from '../../queue/index.js'
 import { formatKsh, productName } from './label.js'
 import { cartProducts, clearCart } from './carts.js'
+import { getValidCoupon, incrementCouponUse } from './coupons.js'
 
 export interface Order {
   id: number
@@ -16,6 +17,8 @@ export interface Order {
   delivery_location: string
   status: 'pending_payment' | 'paid' | 'packed' | 'dropped' | 'collected' | 'cancelled'
   total_ksh: number
+  coupon_code: string | null
+  discount_ksh: number
   package_code: string | null
   paid_at: Date | null
   created_at: Date
@@ -70,19 +73,34 @@ export interface ShopCheckout {
   area: string
 }
 
-// Order placed from the shop SPA: total includes the delivery fee, and the
-// delivery choice is stored as a readable label for the admin/WhatsApp.
-export async function createShopOrder(cartId: string, form: ShopCheckout): Promise<Order> {
+// Order placed from the shop SPA: total includes the delivery fee minus any
+// coupon discount (applied to the dress subtotal, not delivery).
+export async function createShopOrder(
+  cartId: string,
+  form: ShopCheckout,
+  couponCode?: string,
+): Promise<Order> {
   const items = await cartProducts(cartId)
   if (items.length === 0) throw new Error('Your bag is empty (items may have just sold out).')
   const d = SHOP_DELIVERY[form.del] ?? SHOP_DELIVERY.nairobi
-  const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0) + d.fee
+  const subtotal = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
+  let discount = 0
+  let usedCode: string | null = null
+  if (couponCode) {
+    const coupon = await getValidCoupon(couponCode)
+    if (coupon) {
+      discount = Math.round((subtotal * coupon.percent) / 100)
+      usedCode = coupon.code
+    }
+  }
+  const total = subtotal - discount + d.fee
   const location = form.del === 'pickup' ? 'Nairobi CBD pick-up point' : form.area || d.label
   const inserted = await query<Order>(
-    `INSERT INTO orders (customer_name, phone, town, delivery_option, delivery_location, total_ksh)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [form.name, form.phone, location, d.label, location, total],
+    `INSERT INTO orders (customer_name, phone, town, delivery_option, delivery_location, total_ksh, coupon_code, discount_ksh)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [form.name, form.phone, location, d.label, location, total, usedCode, discount],
   )
+  if (usedCode) await incrementCouponUse(usedCode)
   const order = inserted.rows[0]
   for (const p of items) {
     await query('INSERT INTO order_items (order_id, product_id, price_ksh) VALUES ($1, $2, $3)', [

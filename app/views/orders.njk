@@ -43,6 +43,7 @@
 
     <p class="e-muted" style="margin:0">
       📞 {{ o.phone }} · 📍 {{ o.town }} · 🚚 {{ o.delivery_option }} — {{ o.delivery_location }}
+      {% if o.discount_ksh %} · 🎟 {{ o.coupon_code }} (−Ksh {{ o.discount_ksh }}){% endif %}
       {% if o.package_code %} · 📦 <span style="font-family:ui-monospace,monospace;color:var(--accent)">{{ o.package_code }}</span>{% endif %}
     </p>
     <p class="e-muted" style="margin:0;font-size:12px">{{ o.created_at }}{% if o.paid_at %} · paid {{ o.paid_at }}{% endif %}</p>

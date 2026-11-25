@@ -20,6 +20,7 @@ import {
 import { getBool, setSetting } from '../lib/settings.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
+import { createCoupon, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
 import { saveMedia } from '../modules/status/media.js'
 import { ingestConfigured } from '../modules/shop/runpod.js'
 import { enqueueIngest } from '../queue/index.js'
@@ -279,6 +280,37 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
       return reply.redirect('/admin/catalogue?message=Updated')
     },
   )
+
+  // --- coupons ---
+  app.get<{ Querystring: { message?: string } }>('/admin/coupons', async (req, reply) => {
+    return reply.view('coupons.njk', {
+      authed: true,
+      coupons: await listCoupons(),
+      message: req.query.message ?? null,
+    })
+  })
+
+  app.post('/admin/coupons', async (req, reply) => {
+    const form = z
+      .object({
+        code: z.string().min(2),
+        percent: z.coerce.number().int().min(1).max(100),
+        expires: z.string().default(''),
+        maxUses: z.string().default(''),
+      })
+      .safeParse(req.body ?? {})
+    if (!form.success) return reply.redirect('/admin/coupons?message=Enter a code and a percent (1-100)')
+    const expiresAt = form.data.expires ? new Date(form.data.expires) : null
+    const maxUses = form.data.maxUses ? Number.parseInt(form.data.maxUses, 10) : null
+    await createCoupon(form.data.code, form.data.percent, Number.isNaN(expiresAt?.getTime()) ? null : expiresAt, maxUses)
+    return reply.redirect('/admin/coupons?message=Coupon saved')
+  })
+
+  app.post<{ Params: { id: string }; Body: { active?: string } }>('/admin/coupons/:id/toggle', async (req, reply) => {
+    const active = z.object({ active: z.enum(['on', 'off']) }).parse(req.body ?? {}).active === 'on'
+    await setCouponActive(Number(req.params.id), active)
+    return reply.redirect('/admin/coupons?message=Updated')
+  })
 
   // --- carts (what people have added) ---
   app.get('/admin/carts', async (_req, reply) => {
