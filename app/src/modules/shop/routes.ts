@@ -109,7 +109,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const cartId = await getCartId(req)
     const items = cartId ? await cartProducts(cartId) : []
     if (cartId) await Promise.all(items.map((p) => reserveProduct(p.id, cartId)))
-    return reply.header('Cache-Control', 'no-store').send({ ids: items.map((p) => p.id) })
+    return reply.header('Cache-Control', 'no-store').send({ ids: items.map((p) => Number(p.id)) })
   })
 
   app.post('/shop/api/cart/add', POST_LIMIT, async (req, reply) => {
@@ -118,7 +118,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     if (product?.status !== 'published') return reply.send({ ok: false, taken: true, ids: [] })
     const cartId = await ensureCartId(req, reply)
     const held = await addToCart(cartId, productId)
-    const ids = (await cartProducts(cartId)).map((p) => p.id)
+    const ids = (await cartProducts(cartId)).map((p) => Number(p.id))
     return reply.send({ ok: held, taken: !held, ids })
   })
 
@@ -126,7 +126,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const { productId } = z.object({ productId: z.coerce.number() }).parse(req.body ?? {})
     const cartId = await getCartId(req)
     if (cartId) await removeFromCart(cartId, productId)
-    const ids = cartId ? (await cartProducts(cartId)).map((p) => p.id) : []
+    const ids = cartId ? (await cartProducts(cartId)).map((p) => Number(p.id)) : []
     return reply.send({ ids })
   })
 
@@ -166,7 +166,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
         del: result.order.delivery_option,
         method: form.data.method,
         items: items.map((i) => ({
-          id: i.product_id,
+          id: Number(i.product_id),
           name: i.title ?? `Dress #${i.product_id}`,
           size: i.size,
           price: i.price_ksh,
@@ -186,7 +186,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
       rawStatus: order.status,
       total: order.total_ksh,
       del: order.delivery_option,
-      items: items.map((i) => i.product_id),
+      items: items.map((i) => Number(i.product_id)),
       at: order.created_at,
     })
   })
