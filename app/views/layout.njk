@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}WhatsApp Bot{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/glass.css">
 </head>
 <body class="bg-gray-100 min-h-screen">
   <nav class="bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
@@ -31,5 +32,15 @@
   <main class="max-w-3xl mx-auto p-4 space-y-4">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    // Mark the current admin nav link (for the glass theme's active-pill style).
+    (function () {
+      var here = location.pathname;
+      document.querySelectorAll('nav a.text-sm').forEach(function (a) {
+        var p = a.getAttribute('href');
+        if (p && p !== '/admin' && here.indexOf(p) === 0) a.setAttribute('aria-current', 'page');
+      });
+    })();
+  </script>
 </body>
 </html>

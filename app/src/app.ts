@@ -4,6 +4,7 @@ import fastifyCookie from '@fastify/cookie'
 import fastifyFormbody from '@fastify/formbody'
 import fastifyMultipart from '@fastify/multipart'
 import fastifyRateLimit from '@fastify/rate-limit'
+import fastifyStatic from '@fastify/static'
 import fastifyView from '@fastify/view'
 import nunjucks from 'nunjucks'
 import { config } from './config.js'
@@ -31,6 +32,7 @@ export function buildApp() {
   // global: false — limits are opted into per route (login, /notify, /health).
   // The WAHA webhook is exempt: it's HMAC-verified and legitimately bursty.
   app.register(fastifyRateLimit, { global: false })
+  app.register(fastifyStatic, { root: path.resolve('static'), prefix: '/static/' })
   app.register(fastifyView, {
     engine: { nunjucks },
     root: path.resolve('views'),
