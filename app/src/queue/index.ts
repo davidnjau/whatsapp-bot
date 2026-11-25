@@ -3,11 +3,17 @@ import { config } from '../config.js'
 import { query } from '../db.js'
 import { log } from '../logger.js'
 import { processSendJobs } from './worker.js'
+import { runIngest } from '../modules/shop/ingest.js'
 
 export const OUTBOUND_QUEUE = 'outbound'
+export const INGEST_QUEUE = 'shop_ingest'
 
 export interface SendJobData {
   sendId: number
+}
+
+export interface IngestJobData {
+  productId: number
 }
 
 export const boss = new PgBoss({ connectionString: config.databaseUrl, schema: 'pgboss' })
@@ -22,7 +28,22 @@ export async function startQueue() {
     retryBackoff: true,
   })
   await boss.work<SendJobData>(OUTBOUND_QUEUE, { batchSize: 1 }, processSendJobs)
+
+  await boss.createQueue(INGEST_QUEUE, {
+    name: INGEST_QUEUE,
+    retryLimit: 2,
+    retryDelay: 30,
+    retryBackoff: true,
+  })
+  await boss.work<IngestJobData>(INGEST_QUEUE, { batchSize: 1 }, async (jobs) => {
+    for (const job of jobs) await runIngest(job.data.productId)
+  })
   log.info('send queue started')
+}
+
+// Queue an AI digitization run for a product (dormant unless the worker is set).
+export async function enqueueIngest(productId: number): Promise<void> {
+  await boss.send(INGEST_QUEUE, { productId })
 }
 
 export interface EnqueueSendOptions {

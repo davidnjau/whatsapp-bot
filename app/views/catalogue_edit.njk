@@ -1,0 +1,56 @@
+{% extends "layout.njk" %}
+{% block title %}Edit dress #{{ product.id }} — Dress Nation Admin{% endblock %}
+{% block content %}
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Dresses · review</p>
+    <h1 class="e-h1" style="margin:0">Dress #{{ product.id }}</h1>
+  </div>
+  <a href="/admin/catalogue" class="e-btn">← Back to dresses</a>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+  <div style="flex:1 1 220px;max-width:280px">
+    <img src="/shop/img/{{ product.id }}" alt="" style="width:100%;border-radius:12px;background:var(--panel)">
+    <p class="e-muted" style="font-size:13px;margin-top:10px">
+      {% if product.ai_ingested_at %}✨ AI-enriched. Review and save.{% else %}Not yet AI-enriched.{% endif %}
+    </p>
+    <form method="post" action="/admin/catalogue/{{ product.id }}/ingest" style="margin-top:8px">
+      <button class="e-btn e-btn-olive" style="width:100%">✨ {{ 'Re-run' if product.ai_ingested_at else 'Enrich' }} with AI</button>
+    </form>
+    {% if not ingestConfigured %}<p class="e-muted" style="font-size:12px;margin-top:6px">Worker not configured yet — fields below can still be edited by hand.</p>{% endif %}
+  </div>
+
+  <form method="post" action="/admin/catalogue/{{ product.id }}/details" class="e-card" style="flex:999 1 420px;min-width:0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:2 1 160px;font-size:13px;color:var(--muted)">Title<input name="title" class="e-input" style="width:100%;margin-top:4px" value="{{ product.title or '' }}"></label>
+      <label style="flex:1 1 90px;font-size:13px;color:var(--muted)">Size<input name="size" class="e-input" style="width:100%;margin-top:4px" value="{{ product.size or '' }}"></label>
+      <label style="flex:1 1 90px;font-size:13px;color:var(--muted)">Price (Ksh)<input name="price" class="e-input" style="width:100%;margin-top:4px" value="{{ product.price_ksh or 1000 }}"></label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Fabric<input name="fabric" class="e-input" style="width:100%;margin-top:4px" value="{{ product.fabric or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Colour<input name="colour" class="e-input" style="width:100%;margin-top:4px" value="{{ product.colour or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Length<input name="length_desc" class="e-input" style="width:100%;margin-top:4px" value="{{ product.length_desc or '' }}"></label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Silhouette<input name="silhouette" class="e-input" style="width:100%;margin-top:4px" value="{{ product.silhouette or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Stretch<input name="stretch_level" class="e-input" style="width:100%;margin-top:4px" value="{{ product.stretch_level or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Occasions (comma-separated)<input name="occasions" class="e-input" style="width:100%;margin-top:4px" value="{{ occasionsText }}"></label>
+    </div>
+    <label style="font-size:13px;color:var(--muted)">Short description (lead)
+      <textarea name="short_desc" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.short_desc or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">About this dress (long)
+      <textarea name="long_desc" rows="4" class="e-input" style="width:100%;margin-top:4px">{{ product.long_desc or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">Fit notes
+      <textarea name="fit_notes" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.fit_notes or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">Social caption
+      <textarea name="social_caption" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.social_caption or '' }}</textarea></label>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="e-btn e-btn-dark">Save details</button>
+      <a href="/shop/p/{{ product.id }}" target="_blank" class="e-btn">Preview →</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

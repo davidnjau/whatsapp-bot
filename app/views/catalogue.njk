@@ -77,6 +77,10 @@
             {{ '★ In fitting room' if p.featured else '☆ Add to fitting room' }}
           </button>
         </form>
+        <a href="/admin/catalogue/{{ p.id }}/edit" class="e-btn">Edit details{% if p.ai_ingested_at %} ✓AI{% endif %}</a>
+        <form method="post" action="/admin/catalogue/{{ p.id }}/ingest">
+          <button class="e-btn e-btn-olive">✨ Enrich with AI</button>
+        </form>
         {% if p.status == 'draft' %}
         <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button class="e-btn e-btn-dark">Publish (status + shop)</button></form>
         {% elif p.status == 'published' %}

@@ -33,6 +33,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Self-hosted S3-compatible object store for media (used when
+  # STORAGE_BACKEND=minio). Internal only — no published ports.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-dressnation}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-dressnation-minio-secret}
+    volumes:
+      - minio_data:/data
+
   app:
     build: ./app
     restart: unless-stopped
@@ -60,3 +72,4 @@ volumes:
   waha_sessions:
   pg_data:
   media_data:
+  minio_data:

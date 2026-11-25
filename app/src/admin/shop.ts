@@ -12,10 +12,13 @@ import {
   setFeatured,
   setProductStatus,
   updateProduct,
+  updateProductDetails,
   type CatalogueFilter,
   type Product,
 } from '../modules/shop/index.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
+import { ingestConfigured } from '../modules/shop/runpod.js'
+import { enqueueIngest } from '../queue/index.js'
 import { requireWebAuth } from './auth.js'
 
 export const adminShopRoutes: FastifyPluginAsync = async (app) => {
@@ -111,6 +114,67 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
       return reply.redirect(`/admin/catalogue?filter=${parseFilter(req.query.filter)}&message=Fitting room updated`)
     },
   )
+
+  // Queue an AI digitization run (dormant if the worker isn't configured).
+  app.post<{ Params: { id: string } }>('/admin/catalogue/:id/ingest', async (req, reply) => {
+    await enqueueIngest(Number(req.params.id))
+    const msg = ingestConfigured()
+      ? 'AI enrichment queued - the dress will update shortly, then review it.'
+      : 'Queued, but the AI worker is not configured yet (set RUNPOD_ENDPOINT).'
+    return reply.redirect(`/admin/catalogue?message=${encodeURIComponent(msg)}`)
+  })
+
+  // Full detail review/edit page (the AI-filled or hand-typed content).
+  app.get<{ Params: { id: string } }>('/admin/catalogue/:id/edit', async (req, reply) => {
+    const product = await getProduct(Number(req.params.id))
+    if (!product) return reply.redirect('/admin/catalogue?message=Not found')
+    return reply.view('catalogue_edit.njk', {
+      authed: true,
+      product,
+      occasionsText: (product.occasions ?? []).join(', '),
+      ingestConfigured: ingestConfigured(),
+      message: (req.query as any)?.message ?? null,
+    })
+  })
+
+  app.post<{ Params: { id: string } }>('/admin/catalogue/:id/details', async (req, reply) => {
+    const form = z
+      .object({
+        title: z.string().default(''),
+        size: z.string().default(''),
+        price: z.string().default(''),
+        fabric: z.string().default(''),
+        colour: z.string().default(''),
+        length_desc: z.string().default(''),
+        short_desc: z.string().default(''),
+        long_desc: z.string().default(''),
+        social_caption: z.string().default(''),
+        occasions: z.string().default(''),
+        silhouette: z.string().default(''),
+        stretch_level: z.string().default(''),
+        fit_notes: z.string().default(''),
+      })
+      .parse(req.body ?? {})
+    const price = form.price ? Number.parseInt(form.price.replace(/[^\d]/g, ''), 10) : NaN
+    const clean = (s: string) => s.trim() || null
+    const occasions = form.occasions.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    await updateProductDetails(Number(req.params.id), {
+      title: clean(form.title),
+      size: clean(form.size),
+      price_ksh: Number.isFinite(price) && price > 0 ? price : null,
+      fabric: clean(form.fabric),
+      colour: clean(form.colour),
+      length_desc: clean(form.length_desc),
+      short_desc: clean(form.short_desc),
+      long_desc: clean(form.long_desc),
+      social_caption: clean(form.social_caption),
+      occasions: occasions.length ? occasions : null,
+      silhouette: clean(form.silhouette),
+      stretch_level: clean(form.stretch_level),
+      fit_notes: clean(form.fit_notes),
+    })
+    return reply.redirect(`/admin/catalogue/${req.params.id}/edit?message=Saved`)
+  })
 
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/publish', async (req, reply) => {
     try {

@@ -24,6 +24,12 @@ export interface Product {
   short_desc: string | null
   long_desc: string | null
   care: string | null
+  silhouette: string | null
+  stretch_level: string | null
+  fit_notes: string | null
+  social_caption: string | null
+  occasions: string[] | null
+  ai_ingested_at: Date | null
   status: 'draft' | 'published' | 'sold' | 'archived'
   reserved_until: Date | null
   reserved_by: string | null
@@ -164,6 +170,43 @@ export async function updateProduct(
      SET title = $2::text, size = $3::text, price_ksh = $4::int, needs_review = $5::boolean
      WHERE id = $1`,
     [id, fields.title, fields.size, fields.price_ksh, needsReview],
+  )
+}
+
+// Full detail edit (owner review of AI-filled or hand-typed content).
+export async function updateProductDetails(
+  id: number,
+  f: {
+    title: string | null
+    size: string | null
+    price_ksh: number | null
+    fabric: string | null
+    colour: string | null
+    length_desc: string | null
+    short_desc: string | null
+    long_desc: string | null
+    social_caption: string | null
+    occasions: string[] | null
+    silhouette: string | null
+    stretch_level: string | null
+    fit_notes: string | null
+  },
+): Promise<void> {
+  const needsReview = f.size === null || f.price_ksh === null
+  await query(
+    `UPDATE products SET
+       title = $2::text, size = $3::text, price_ksh = $4::int,
+       fabric = $5::text, colour = $6::text, length_desc = $7::text,
+       short_desc = $8::text, long_desc = $9::text, social_caption = $10::text,
+       occasions = $11::jsonb, silhouette = $12::text, stretch_level = $13::text, fit_notes = $14::text,
+       needs_review = $15::boolean
+     WHERE id = $1`,
+    [
+      id, f.title, f.size, f.price_ksh, f.fabric, f.colour, f.length_desc,
+      f.short_desc, f.long_desc, f.social_caption,
+      f.occasions ? JSON.stringify(f.occasions) : null,
+      f.silhouette, f.stretch_level, f.fit_notes, needsReview,
+    ],
   )
 }
 

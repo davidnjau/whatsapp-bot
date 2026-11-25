@@ -40,6 +40,20 @@ const Env = z.object({
 
   SHOP_RESERVE_MINUTES: z.coerce.number().default(3),
 
+  // Object storage: 'disk' (local MEDIA_DIR) or 'minio' (self-hosted S3).
+  STORAGE_BACKEND: z.enum(['disk', 'minio']).default('disk'),
+  S3_ENDPOINT: z.string().default('minio:9000'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string().default('dressnation'),
+  S3_ACCESS_KEY: z.string().default(''),
+  S3_SECRET_KEY: z.string().default(''),
+  S3_USE_SSL: z.enum(['true', 'false']).default('false'),
+
+  // RunPod digitization worker (AI ingest). Dormant until the endpoint is set.
+  RUNPOD_ENDPOINT: z.string().default(''),
+  RUNPOD_API_KEY: z.string().default(''),
+  INGEST_CATEGORY: z.string().default('dress'),
+
   SEND_MIN_DELAY_SECONDS: z.coerce.number().default(3),
   SEND_MAX_DELAY_SECONDS: z.coerce.number().default(10),
   SEND_MAX_PER_HOUR: z.coerce.number().default(200),
@@ -92,6 +106,19 @@ export const config = {
   sessionSecret: env.SESSION_SECRET,
 
   shopReserveMinutes: env.SHOP_RESERVE_MINUTES,
+
+  storageBackend: env.STORAGE_BACKEND,
+  s3: {
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    bucket: env.S3_BUCKET,
+    accessKey: env.S3_ACCESS_KEY,
+    secretKey: env.S3_SECRET_KEY,
+    useSSL: env.S3_USE_SSL === 'true',
+  },
+  runpodEndpoint: env.RUNPOD_ENDPOINT,
+  runpodApiKey: env.RUNPOD_API_KEY,
+  ingestCategory: env.INGEST_CATEGORY,
 
   sendMinDelaySeconds: env.SEND_MIN_DELAY_SECONDS,
   sendMaxDelaySeconds: env.SEND_MAX_DELAY_SECONDS,
