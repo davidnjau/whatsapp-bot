@@ -11,5 +11,7 @@ requests>=2.32.0
 einops>=0.8.0
 timm>=1.0.0                   # BiRefNet backbone
 kornia>=0.7.0                 # BiRefNet deps
+open-clip-torch>=2.24.0      # Marqo-FashionSigLIP backbone
+ftfy>=6.1.0                  # Marqo-FashionSigLIP text cleanup
 safetensors>=0.4.3
 sentencepiece>=0.2.0
