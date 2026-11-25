@@ -8,7 +8,7 @@ import { startHandoff, setBotPaused } from './handoff.js'
 import { isWithinBusinessHours } from './hours.js'
 import { loadMenu, matchMenuItem, menuList } from './menu.js'
 import { isAngry, parseStaffCommand, wantsHuman } from './triggers.js'
-import { handleShopMessage } from '../shop/chat.js'
+import { handleShopMessage, sendCatalogueTo } from '../shop/chat.js'
 
 export interface InboundDm {
   chatId: string
@@ -78,6 +78,13 @@ export async function handleInboundDm(msg: InboundDm) {
 
   if (wantsHuman(msg.body) || isAngry(msg.body)) {
     return startHandoff(msg.chatId, wantsHuman(msg.body) ? 'customer asked for a human' : 'customer sounds upset')
+  }
+
+  // A menu item can trigger the live catalogue (e.g. replying "1"), in both
+  // menu and AI modes.
+  const actionItem = matchMenuItem(menu, msg.body)
+  if (actionItem?.action === 'catalogue') {
+    return sendCatalogueTo(msg.chatId)
   }
 
   const provider = getProvider()

@@ -95,15 +95,26 @@ second payer cleanly.
    collect (within 3 days).
 
 **Option B — entirely on WhatsApp**
-1. Message the shop's WhatsApp number.
-2. Send **"catalogue"** (or "mnauza nini") — the bot replies with the available
-   dresses, each as `#number — SIZE, price`, plus the shop link.
-3. Send **"buy 3"** (or "nataka 3", "#3"). The bot confirms the dress is
-   available and asks for your **town**, then your **delivery option** (reply
-   1/2/3), then the **pickup point / address**.
-4. The bot creates your order and sends a **pay link**. Tap it to pay
-   (simulated) — then it's the same as Option A from step 4.
-5. Send **"cancel"** any time during ordering to stop.
+1. Message the shop's WhatsApp number. On first contact the bot sends an
+   emoji menu (🛍️ Shop dresses, 🚚 Delivery, 📦 Track, 📋 Policies, 🙋 Talk to a person).
+2. Reply **1** (or "catalogue") — the bot lists available dresses, each as
+   `#number — SIZE, price`, plus the shop link.
+3. Pick one: reply with its **number** — `#21`, a bare `21`, or "buy 21",
+   "nataka 21", "mine 21". (If the bot has shown a single dress, "mine" alone
+   claims it.) The dress is **held for you for 3 minutes** so no one else can
+   grab it while you order.
+4. The bot asks your **town**, **delivery option** (reply 1/2/3), and the
+   **pickup point / address**, then creates your order and sends a **pay
+   link**. Tap it to pay (simulated) — same as Option A from step 4.
+5. Send **"cancel"** any time to stop and release the dress.
+
+> **Reservation hold.** Adding a dress to a cart (web) or claiming one in chat
+> holds it for `SHOP_RESERVE_MINUTES` (default 3) — it disappears from
+> everyone else's shop and catalogue during the hold, and comes back
+> automatically if you don't pay in time. Payment is the final lock: the first
+> person to pay gets the dress, and single pieces drop out of the shop the
+> instant they sell. Picking low numbers that clash with the menu (0–4) needs
+> the `#` form (e.g. `#3`); any higher number works bare (`21`).
 
 > **Why a link for payment?** True in-chat M-Pesa (an STK push you approve
 > inside WhatsApp) needs the official WhatsApp Business API plus a live M-Pesa

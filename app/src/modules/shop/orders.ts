@@ -132,7 +132,7 @@ export async function payOrder(
     )
     const ids = items.rows.map((r) => r.product_id)
     const sold = await client.query(
-      `UPDATE products SET status = 'sold', sold_at = now()
+      `UPDATE products SET status = 'sold', sold_at = now(), reserved_until = NULL, reserved_by = NULL
        WHERE id = ANY($1::bigint[]) AND status = 'published'`,
       [ids],
     )

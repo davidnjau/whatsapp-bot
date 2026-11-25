@@ -2,7 +2,8 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { readMediaContent } from '../status/media.js'
 import { addToCart, cartCount, cartExists, cartProducts, createCart, removeFromCart } from './carts.js'
-import { getProduct, listProducts } from './index.js'
+import { getProduct } from './index.js'
+import { isHeldByOther, listAvailable, reserveProduct } from './reservations.js'
 import { createOrder, getOrder, orderItems, payOrder } from './orders.js'
 
 const CART_COOKIE = 'cart_id'
@@ -36,7 +37,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
   app.get('/shop', async (req, reply) => {
     const cartId = await getCartId(req)
     const [products, count] = await Promise.all([
-      listProducts('published'),
+      listAvailable(cartId ?? ''),
       cartId ? cartCount(cartId) : Promise.resolve(0),
     ])
     return reply.view('shop_index.njk', { products, cartCount: count })
@@ -49,7 +50,8 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     }
     const cartId = await getCartId(req)
     const count = cartId ? await cartCount(cartId) : 0
-    return reply.view('shop_product.njk', { product, cartCount: count })
+    const heldByOther = isHeldByOther(product, cartId ?? '')
+    return reply.view('shop_product.njk', { product, cartCount: count, heldByOther })
   })
 
   // Product image (any known product — images are the public catalogue content).
@@ -69,7 +71,8 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const product = await getProduct(form.productId)
     if (product?.status === 'published') {
       const cartId = await ensureCartId(req, reply)
-      await addToCart(cartId, form.productId)
+      const held = await addToCart(cartId, form.productId)
+      if (!held) return reply.redirect('/shop/cart?taken=1')
     }
     return reply.redirect('/shop/cart')
   })
@@ -81,11 +84,20 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     return reply.redirect('/shop/cart')
   })
 
-  app.get('/shop/cart', async (req, reply) => {
+  app.get<{ Querystring: { taken?: string } }>('/shop/cart', async (req, reply) => {
     const cartId = await getCartId(req)
+    // Extend the hold on everything still in the cart while they're here.
     const items = cartId ? await cartProducts(cartId) : []
+    if (cartId) await Promise.all(items.map((p) => reserveProduct(p.id, cartId)))
     const total = items.reduce((sum, p) => sum + (p.price_ksh ?? 0), 0)
-    return reply.view('shop_cart.njk', { items, total, cartCount: items.length, error: null })
+    return reply.view('shop_cart.njk', {
+      items,
+      total,
+      cartCount: items.length,
+      error: req.query.taken
+        ? 'Sorry — that dress was just reserved by someone else. Each piece is unique!'
+        : null,
+    })
   })
 
   app.post('/shop/checkout', POST_LIMIT, async (req, reply) => {

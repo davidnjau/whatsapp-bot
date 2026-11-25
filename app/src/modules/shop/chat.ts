@@ -4,7 +4,8 @@ import { log } from '../../logger.js'
 import { enqueueSend } from '../../queue/index.js'
 import { formatKsh, productName } from './label.js'
 import { detectShopIntent, parseDeliveryOption, type DeliveryOption } from './chat-intent.js'
-import { getProduct, listProducts } from './index.js'
+import { getProduct } from './index.js'
+import { listAvailable, releaseReservation, reserveProduct } from './reservations.js'
 import { createDirectOrder } from './orders.js'
 
 interface Session {
@@ -39,8 +40,9 @@ function reply(chatId: string, text: string) {
   return enqueueSend({ chatId, module: 'shop', kind: 'order_chat', payload: { type: 'text', text, typing: true } })
 }
 
-async function sendCatalogue(chatId: string) {
-  const products = (await listProducts('published')).slice(0, 10)
+// Exported so the support menu (reply "1") can show the catalogue too.
+export async function sendCatalogueTo(chatId: string) {
+  const products = (await listAvailable(chatId)).slice(0, 10)
   if (products.length === 0) {
     await reply(chatId, 'Hakuna dresses available kwa sasa — check back soon! 💕 Or see the shop: ' + `${config.appBaseUrl}/shop`)
     return
@@ -51,7 +53,7 @@ async function sendCatalogue(chatId: string) {
   await reply(
     chatId,
     `Here's what's available 💃\n${lines.join('\n')}\n\n` +
-      `To order, reply "buy <number>" (e.g. buy ${products[0].id}).\n` +
+      `Reply with a dress number to reserve it (e.g. #${products[0].id}), or "mine".\n` +
       `See photos & more: ${config.appBaseUrl}/shop`,
   )
 }
@@ -68,8 +70,9 @@ export async function handleShopMessage(
 
   if (intent.kind === 'cancel') {
     if (session) {
+      if (session.product_id) await releaseReservation(session.product_id, chatId)
       await clearSession(chatId)
-      await reply(chatId, 'Order cancelled 👍 Niko hapa ukihitaji kitu kingine.')
+      await reply(chatId, 'Order cancelled 👍 Dress imerudishwa. Niko hapa ukihitaji kitu kingine.')
       return true
     }
     return false
@@ -81,36 +84,60 @@ export async function handleShopMessage(
   }
 
   if (intent.kind === 'catalogue') {
-    await sendCatalogue(chatId)
+    await sendCatalogueTo(chatId)
+    return true
+  }
+
+  if (intent.kind === 'reserve_prompt') {
+    const available = await listAvailable(chatId)
+    if (available.length === 1) {
+      return startOrder(chatId, available[0].id)
+    }
+    await reply(chatId, 'Which dress would you like? Reply with its number, e.g. #21. 🙂')
     return true
   }
 
   if (intent.kind === 'buy') {
-    const product = await getProduct(intent.productId)
-    if (!product || product.status !== 'published') {
-      await reply(
-        chatId,
-        `Pole, dress #${intent.productId} haipo available. Reply "catalogue" to see what's in stock. 💕`,
-      )
-      return true
-    }
-    await setSession({
-      chat_id: chatId,
-      state: 'awaiting_town',
-      product_id: product.id,
-      town: null,
-      delivery_option: null,
-    })
-    await reply(
-      chatId,
-      `${productName(product)} — ${product.size ? `SIZE ${product.size}, ` : ''}${formatKsh(product.price_ksh ?? 0)} is available ✅\n` +
-        `(Single piece, no refunds/exchanges — unaweza omba measurements/video kwanza.)\n\n` +
-        `Let's arrange delivery. Which town/area are you in?`,
-    )
-    return true
+    return startOrder(chatId, intent.productId)
   }
 
   return false
+}
+
+// Reserve the dress (3-min hold) and begin the delivery questions.
+async function startOrder(chatId: string, productId: number): Promise<boolean> {
+  const product = await getProduct(productId)
+  if (!product || product.status !== 'published') {
+    await reply(
+      chatId,
+      `Pole, dress #${productId} haipo available. Reply "catalogue" to see what's in stock. 💕`,
+    )
+    return true
+  }
+  const held = await reserveProduct(productId, chatId)
+  if (!held) {
+    await reply(
+      chatId,
+      `Pole, dress #${productId} imeshikwa na mtu mwingine kwa sasa 😔 (each piece is unique). ` +
+        `Reply "catalogue" to see what's still available.`,
+    )
+    return true
+  }
+  await setSession({
+    chat_id: chatId,
+    state: 'awaiting_town',
+    product_id: product.id,
+    town: null,
+    delivery_option: null,
+  })
+  await reply(
+    chatId,
+    `${productName(product)} — ${product.size ? `SIZE ${product.size}, ` : ''}${formatKsh(product.price_ksh ?? 0)} is yours to reserve ✅\n` +
+      `I'll hold it for you for ${config.shopReserveMinutes} min while we sort delivery.\n` +
+      `(Single piece, no refunds/exchanges — unaweza omba measurements/video kwanza.)\n\n` +
+      `Which town/area are you in?`,
+  )
+  return true
 }
 
 async function advanceSession(
@@ -121,6 +148,17 @@ async function advanceSession(
 ): Promise<boolean> {
   const chatId = session.chat_id
   const text = body.trim()
+
+  // Keep the hold alive while they're actively answering. If it lapsed and
+  // someone else grabbed the dress, stop cleanly.
+  if (session.product_id && !(await reserveProduct(session.product_id, chatId))) {
+    await clearSession(chatId)
+    await reply(
+      chatId,
+      `Pole — that dress was just reserved by someone else 😔 Reply "catalogue" to see what's still available.`,
+    )
+    return true
+  }
 
   if (session.state === 'awaiting_town') {
     if (text.length < 2) {

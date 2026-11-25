@@ -37,6 +37,8 @@ const Env = z.object({
   ADMIN_API_TOKEN: z.string().min(1),
   SESSION_SECRET: z.string().min(1),
 
+  SHOP_RESERVE_MINUTES: z.coerce.number().default(3),
+
   SEND_MIN_DELAY_SECONDS: z.coerce.number().default(3),
   SEND_MAX_DELAY_SECONDS: z.coerce.number().default(10),
   SEND_MAX_PER_HOUR: z.coerce.number().default(200),
@@ -84,6 +86,8 @@ export const config = {
   adminPassword: env.ADMIN_PASSWORD,
   adminApiToken: env.ADMIN_API_TOKEN,
   sessionSecret: env.SESSION_SECRET,
+
+  shopReserveMinutes: env.SHOP_RESERVE_MINUTES,
 
   sendMinDelaySeconds: env.SEND_MIN_DELAY_SECONDS,
   sendMaxDelaySeconds: env.SEND_MAX_DELAY_SECONDS,

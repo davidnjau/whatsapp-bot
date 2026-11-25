@@ -17,17 +17,12 @@ media_ack: |
 
 menu:
   - key: "1"
-    title: "Order a dress / Kuagiza dress"
-    keywords: [order, buy, available, iko, bado, nataka hii, niaje hii, how to order, kuagiza]
-    reply: |
-      Easy! 😊 Send a screenshot of the dress (or tell us which video it's
-      from) and we'll confirm it's still available, the size and the price
-      (usually Ksh 1,000 — confirm per dress). Each dress is a single piece!
-      Since we have no refunds/exchanges, ask for measurements or a video
-      kwanza ukitaka. Ukishachagua, we arrange Pickup Mtaani delivery.
+    title: "🛍️ Shop dresses / Nunua dress"
+    keywords: [order, buy, available, iko, bado, nataka hii, niaje hii, how to order, kuagiza, shop, catalogue]
+    action: catalogue
 
   - key: "2"
-    title: "Delivery & fees / Usafirishaji"
+    title: "🚚 Delivery & fees / Usafirishaji"
     keywords: [delivery, deliver, fee, pickup, mtaani, doorstep, usafirishaji, kufika, utafika, shipping]
     reply: |
       We deliver countrywide via Pickup Mtaani 🇰🇪
@@ -38,7 +33,7 @@ menu:
       separate from the dress price.
 
   - key: "3"
-    title: "Track my order / Kufuatilia order"
+    title: "📦 Track my order / Kufuatilia order"
     keywords: [track, tracking, package code, parcel, imefika, iko wapi, status ya order]
     reply: |
       Once we drop your dress with Pickup Mtaani, we send you a package code —
@@ -47,7 +42,7 @@ menu:
       disposed of). Open and check your parcel at the agent before leaving! 🙌
 
   - key: "4"
-    title: "Policies / Sheria za duka"
+    title: "📋 Policies / Sheria za duka"
     keywords: [refund, exchange, return, kubadilisha, kurudisha, policy, sheria]
     reply: |
       Mtumba items are sold as they are: ❌ no refunds, ❌ no exchanges.
@@ -56,6 +51,6 @@ menu:
       always — tell us if you want a condition check on any dress.
 
   - key: "0"
-    title: "Talk to a person / Ongea na mtu"
+    title: "🙋 Talk to a person / Ongea na mtu"
     keywords: [human, agent, person, mtu, msaada, owner, mwenye duka, customer care]
     handoff: true

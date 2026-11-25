@@ -9,6 +9,7 @@ const MenuItemSchema = z.object({
   keywords: z.array(z.string()).default([]),
   reply: z.string().optional(),
   handoff: z.boolean().default(false),
+  action: z.enum(['catalogue']).optional(),
 })
 
 export const MenuSchema = z.object({

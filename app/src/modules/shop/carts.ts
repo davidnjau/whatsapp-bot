@@ -1,5 +1,6 @@
 import { query } from '../../db.js'
 import type { Product } from './index.js'
+import { AVAILABLE_TO, releaseReservation, reserveProduct } from './reservations.js'
 
 export async function createCart(): Promise<string> {
   const res = await query<{ id: string }>('INSERT INTO carts DEFAULT VALUES RETURNING id')
@@ -11,25 +12,30 @@ export async function cartExists(cartId: string): Promise<boolean> {
   return !!res.rowCount
 }
 
-export async function addToCart(cartId: string, productId: number): Promise<void> {
+// Adding to cart places a hold. Returns false if another shopper holds it.
+export async function addToCart(cartId: string, productId: number): Promise<boolean> {
+  const held = await reserveProduct(productId, cartId)
+  if (!held) return false
   await query(
     'INSERT INTO cart_items (cart_id, product_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [cartId, productId],
   )
   await query('UPDATE carts SET updated_at = now() WHERE id = $1', [cartId])
+  return true
 }
 
 export async function removeFromCart(cartId: string, productId: number): Promise<void> {
   await query('DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2', [cartId, productId])
+  await releaseReservation(productId, cartId)
   await query('UPDATE carts SET updated_at = now() WHERE id = $1', [cartId])
 }
 
-// Only items still purchasable count — sold dresses silently drop out.
+// Items this cart can still buy: own holds (or lapsed), never others' live holds.
 export async function cartProducts(cartId: string): Promise<Product[]> {
   const res = await query<Product>(
     `SELECT p.* FROM cart_items ci
      JOIN products p ON p.id = ci.product_id
-     WHERE ci.cart_id = $1 AND p.status = 'published'
+     WHERE ci.cart_id = $1 AND ${AVAILABLE_TO('$1')}
      ORDER BY ci.added_at`,
     [cartId],
   )
@@ -40,7 +46,7 @@ export async function cartCount(cartId: string): Promise<number> {
   const res = await query<{ count: string }>(
     `SELECT count(*) FROM cart_items ci
      JOIN products p ON p.id = ci.product_id
-     WHERE ci.cart_id = $1 AND p.status = 'published'`,
+     WHERE ci.cart_id = $1 AND ${AVAILABLE_TO('$1')}`,
     [cartId],
   )
   return Number(res.rows[0].count)

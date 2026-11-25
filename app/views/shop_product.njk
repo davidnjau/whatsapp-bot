@@ -12,10 +12,14 @@
     </p>
     {% if product.status == 'sold' %}
     <p class="inline-block bg-gray-200 text-gray-600 rounded-full px-3 py-1 text-sm font-medium">SOLD 😢</p>
+    {% elif heldByOther %}
+    <p class="inline-block bg-amber-100 text-amber-800 rounded-full px-3 py-1 text-sm font-medium">
+      Reserved by another shopper — check back in a few minutes ⏳
+    </p>
     {% else %}
     <form method="post" action="/shop/cart/add">
       <input type="hidden" name="productId" value="{{ product.id }}">
-      <button class="bg-rose-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-rose-700">Add to cart</button>
+      <button class="bg-rose-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-rose-700">Add to cart (held 3 min)</button>
     </form>
     {% endif %}
     <div class="text-sm text-gray-600 space-y-1 pt-2 border-t">

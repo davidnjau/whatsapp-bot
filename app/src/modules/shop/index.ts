@@ -18,6 +18,8 @@ export interface Product {
   ocr_source: string | null
   needs_review: boolean
   status: 'draft' | 'published' | 'sold' | 'archived'
+  reserved_until: Date | null
+  reserved_by: string | null
   created_at: Date
   published_at: Date | null
   sold_at: Date | null
@@ -181,7 +183,11 @@ export async function publishProduct(id: number): Promise<void> {
 
 export async function setProductStatus(id: number, status: Product['status']): Promise<void> {
   await query(
-    `UPDATE products SET status = $2, sold_at = CASE WHEN $2 = 'sold' THEN now() ELSE sold_at END WHERE id = $1`,
+    `UPDATE products
+     SET status = $2,
+         sold_at = CASE WHEN $2 = 'sold' THEN now() ELSE sold_at END,
+         reserved_until = NULL, reserved_by = NULL
+     WHERE id = $1`,
     [id, status],
   )
 }

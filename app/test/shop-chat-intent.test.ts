@@ -10,6 +10,21 @@ describe('detectShopIntent', () => {
     expect(detectShopIntent('#9')).toEqual({ kind: 'buy', productId: 9 })
   })
 
+  it('accepts a bare dress number, or # for low ids that clash with the menu', () => {
+    expect(detectShopIntent('21')).toEqual({ kind: 'buy', productId: 21 })
+    expect(detectShopIntent('#21')).toEqual({ kind: 'buy', productId: 21 })
+    expect(detectShopIntent(' 15 ')).toEqual({ kind: 'buy', productId: 15 })
+    // low bare numbers are menu options; use # to pick those dresses
+    expect(detectShopIntent('3')).toEqual({ kind: 'none' })
+    expect(detectShopIntent('#3')).toEqual({ kind: 'buy', productId: 3 })
+  })
+
+  it('handles the "mine" claim keyword', () => {
+    expect(detectShopIntent('mine')).toEqual({ kind: 'reserve_prompt' })
+    expect(detectShopIntent('mine 21')).toEqual({ kind: 'buy', productId: 21 })
+    expect(detectShopIntent('21 ni mine')).toEqual({ kind: 'buy', productId: 21 })
+  })
+
   it('detects catalogue requests', () => {
     expect(detectShopIntent('catalogue')).toEqual({ kind: 'catalogue' })
     expect(detectShopIntent('what do you have?')).toEqual({ kind: 'catalogue' })
@@ -23,9 +38,8 @@ describe('detectShopIntent', () => {
     expect(detectShopIntent('STOP')).toEqual({ kind: 'none' })
   })
 
-  it('ignores normal chatter and bare numbers', () => {
+  it('ignores normal chatter', () => {
     expect(detectShopIntent('hi there')).toEqual({ kind: 'none' })
-    expect(detectShopIntent('3')).toEqual({ kind: 'none' }) // bare number = menu option, not buy
     expect(detectShopIntent('')).toEqual({ kind: 'none' })
   })
 })
