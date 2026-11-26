@@ -22,10 +22,21 @@ export const adminSupportRoutes: FastifyPluginAsync = async (app) => {
       last_body: string | null
       last_at: Date | null
     }>(
-      `SELECT c.chat_id, c.bot_paused, ct.name, ct.phone,
+      // Resolve a display name: this contact's own name, else any contact or
+      // order with the same phone (so a @c.us chat shows the name we saved on
+      // the @lid row / at checkout). Unknown numbers just stay as the number.
+      `SELECT c.chat_id, c.bot_paused, COALESCE(ph.phone, ct.phone) AS phone,
+              COALESCE(
+                NULLIF(ct.name, ''),
+                (SELECT c2.name FROM contacts c2 WHERE c2.phone = ph.phone AND NULLIF(c2.name, '') IS NOT NULL ORDER BY c2.chat_id LIMIT 1),
+                (SELECT o.customer_name FROM orders o WHERE o.phone = ph.phone AND NULLIF(o.customer_name, '') IS NOT NULL ORDER BY o.created_at DESC LIMIT 1)
+              ) AS name,
               m.body AS last_body, m.created_at AS last_at
        FROM chats c
        LEFT JOIN contacts ct ON ct.chat_id = c.chat_id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(ct.phone, CASE WHEN c.chat_id LIKE '%@c.us' THEN replace(c.chat_id, '@c.us', '') END) AS phone
+       ) ph ON true
        LEFT JOIN LATERAL (
          SELECT body, created_at FROM messages
          WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1
@@ -59,8 +70,20 @@ export const adminSupportRoutes: FastifyPluginAsync = async (app) => {
           'SELECT chat_id, bot_paused FROM chats WHERE chat_id = $1',
           [chatId],
         ),
+        // Same name resolution as the list: own contact name, else a name saved
+        // for the same phone on another contact row or at checkout.
         query<{ name: string | null; phone: string | null }>(
-          'SELECT name, phone FROM contacts WHERE chat_id = $1',
+          `SELECT COALESCE(
+                    NULLIF(ct.name, ''),
+                    (SELECT c2.name FROM contacts c2 WHERE c2.phone = ph.phone AND NULLIF(c2.name, '') IS NOT NULL ORDER BY c2.chat_id LIMIT 1),
+                    (SELECT o.customer_name FROM orders o WHERE o.phone = ph.phone AND NULLIF(o.customer_name, '') IS NOT NULL ORDER BY o.created_at DESC LIMIT 1)
+                  ) AS name,
+                  COALESCE(ph.phone, ct.phone) AS phone
+           FROM (SELECT $1::text AS chat_id) base
+           LEFT JOIN contacts ct ON ct.chat_id = base.chat_id
+           LEFT JOIN LATERAL (
+             SELECT COALESCE(ct.phone, CASE WHEN base.chat_id LIKE '%@c.us' THEN replace(base.chat_id, '@c.us', '') END) AS phone
+           ) ph ON true`,
           [chatId],
         ),
         // Page in the DB: newest 40 before the cursor (+1 to detect older), then reverse.
