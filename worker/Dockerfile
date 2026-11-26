@@ -7,6 +7,10 @@ FROM runpod/pytorch:2.2.0-cu1281-torch280-ubuntu2404
 
 WORKDIR /app
 
+# Font for the baked-in product-card text (colour/size/fabric overlay).
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # All model weights cache on the persistent network volume to avoid cold-start
 # downloads. The volume is mounted at /runpod-volume at run time.
 ENV HF_HOME=/runpod-volume/models \

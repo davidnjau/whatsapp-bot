@@ -44,6 +44,7 @@ const ALT: Record<string, string> = {
   close: 'Close-up',
   video: 'Short video',
   photo: 'Photo',
+  poster: 'Product card',
 }
 
 function toMedia(row: MediaRow, name: string): DressMedia {

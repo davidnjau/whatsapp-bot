@@ -38,6 +38,7 @@ export async function runIngest(productId: number): Promise<void> {
   // Attach the generated gallery images (base64 in the response).
   let pos = 100
   for (const [field, kind] of [
+    ['card_b64', 'poster'],
     ['cutout_b64', 'cutout'],
     ['studio_b64', 'studio'],
   ] as const) {

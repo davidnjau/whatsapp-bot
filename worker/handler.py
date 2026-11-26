@@ -20,7 +20,7 @@ import traceback
 import requests
 import runpod
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 
 from model_manager import DEVICE, MANAGER
@@ -37,6 +37,52 @@ def pil_to_b64(img: Image.Image, fmt: str = "PNG") -> str:
     buf = io.BytesIO()
     img.save(buf, format=fmt)
     return base64.b64encode(buf.getvalue()).decode()
+
+
+BRAND = "DRESS NATION ~254"
+_IVORY, _OLIVE, _INK = (247, 243, 235), (92, 101, 52), (43, 39, 36)
+
+
+def _font(size: int, bold: bool = False):
+    name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+    for p in (f"/usr/share/fonts/truetype/dejavu/{name}",
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
+        try:
+            return ImageFont.truetype(p, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _center(draw, text, font, y, w, fill):
+    tw = draw.textlength(text, font=font)
+    draw.text(((w - tw) / 2, y), text, font=font, fill=fill)
+
+
+def product_card(cutout: Image.Image, colour: str, sizes: str, fabric: str) -> Image.Image:
+    """A ready-to-post branded card: shop name on top, the dress centred, and the
+    confirmed Colour / Size / Fabric captioned below — baked into the file."""
+    W, H = 1080, 1350
+    card = Image.new("RGB", (W, H), _IVORY)
+    draw = ImageDraw.Draw(card)
+    _center(draw, BRAND, _font(46, bold=True), 64, W, _OLIVE)
+    top, bottom_reserve, pad = 170, 210, 90
+    area_w, area_h = W - 2 * pad, H - top - bottom_reserve
+    dress = cutout.convert("RGBA").copy()
+    dress.thumbnail((area_w, area_h))
+    dx = (W - dress.width) // 2
+    dy = top + (area_h - dress.height) // 2
+    card.paste(dress, (dx, dy), dress)
+    parts = []
+    if colour.strip():
+        parts.append(colour.strip().title())
+    if sizes.strip() and sizes.strip().lower() != "unspecified":
+        parts.append(sizes.strip())
+    if fabric.strip():
+        parts.append(fabric.strip().title())
+    if parts:
+        _center(draw, "  ·  ".join(parts), _font(42), H - 150, W, _INK)
+    return card
 
 
 def parse_json(text: str) -> dict:
@@ -163,9 +209,18 @@ def ingest_product(inp: dict) -> dict:
     )
     meta = parse_json(run_qwen(system, user, img))
     embedding = run_siglip(img)
+    # Ready-to-post card with the confirmed colour/size/fabric baked in. Falls
+    # back to the model's colour when the shop hasn't set one yet.
+    card = product_card(
+        cutout,
+        (inp.get("colour") or meta.get("colour") or "").strip(),
+        sizes,
+        (inp.get("fabric") or (meta.get("fit_profile") or {}).get("estimated_fabric") or "").strip(),
+    )
     return {
         "cutout_b64": pil_to_b64(cutout, "PNG"),
         "studio_b64": pil_to_b64(studio, "PNG"),
+        "card_b64": pil_to_b64(card, "PNG"),
         "title": meta.get("title"),
         "whatsapp_description": meta.get("whatsapp_description"),
         "social_caption": meta.get("social_caption"),
