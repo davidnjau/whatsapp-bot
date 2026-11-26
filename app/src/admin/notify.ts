@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { query } from '../db.js'
 import { parseCsvContacts } from '../modules/notify/csv.js'
 import { createNotification, listNotifications, NotifyError } from '../modules/notify/index.js'
-import { listTemplates, getTemplate, upsertTemplate, listVariables } from '../modules/notify/templates.js'
+import { listTemplates, getTemplate, upsertTemplate } from '../modules/notify/templates.js'
 import { requireWebAuth } from './auth.js'
 
 const TEMPLATE_NAME = /^[a-z0-9_]+$/
@@ -13,39 +13,39 @@ export const adminNotifyRoutes: FastifyPluginAsync = async (app) => {
 
   // --- templates ---
   app.get('/admin/templates', async (_req, reply) => {
+    // The friendly editor loads the templates as window.TEMPLATES.
     const templates = await listTemplates()
-    return reply.view('templates.njk', {
-      authed: true,
-      templates: templates.map((t) => ({ ...t, vars: listVariables(t.body) })),
-    })
+    const seed = templates.map((t) => ({ id: t.name, body: t.body }))
+    const templatesJson = JSON.stringify(seed).replace(/</g, '\\u003c')
+    return reply.view('templates.njk', { authed: true, templatesJson })
   })
 
+  // Old edit URLs now live inside the SPA — bounce them to the hash view.
   app.get<{ Params: { name: string } }>('/admin/templates/:name', async (req, reply) => {
-    const isNew = req.params.name === 'new'
-    const template = isNew ? null : await getTemplate(req.params.name)
-    if (!isNew && !template) return reply.callNotFound()
-    return reply.view('template_edit.njk', {
-      authed: true,
-      isNew,
-      name: isNew ? '' : req.params.name,
-      body: template?.body ?? '',
-      error: null,
-      saved: false,
-    })
+    const name = req.params.name
+    if (name === 'new') return reply.redirect('/admin/templates#new')
+    const template = await getTemplate(name)
+    if (!template) return reply.callNotFound()
+    return reply.redirect(`/admin/templates#edit-${name.replace(/_/g, '-')}`)
   })
 
   app.post<{ Params: { name: string } }>('/admin/templates/:name', async (req, reply) => {
     const form = z.object({ name: z.string().default(''), body: z.string().min(1) }).parse(req.body ?? {})
     const isNew = req.params.name === 'new'
     const name = isNew ? form.name.trim() : req.params.name
+    const wantsJson = (req.headers.accept ?? '').includes('application/json')
+    const fail = (msg: string) =>
+      wantsJson
+        ? reply.code(400).send({ ok: false, error: msg })
+        : reply.view('template_edit.njk', { authed: true, isNew, name: form.name, body: form.body, error: msg, saved: false })
     if (!TEMPLATE_NAME.test(name)) {
-      return reply.view('template_edit.njk', {
-        authed: true, isNew, name: form.name, body: form.body,
-        error: 'Template name must be lowercase letters, numbers, and underscores.', saved: false,
-      })
+      return fail('Template name must be lowercase letters, numbers, and underscores.')
+    }
+    if (isNew && (await getTemplate(name))) {
+      return fail(`A template called "${name}" already exists.`)
     }
     await upsertTemplate(name, form.body)
-    return reply.redirect(`/admin/templates/${encodeURIComponent(name)}`)
+    return wantsJson ? reply.send({ ok: true, name }) : reply.redirect(`/admin/templates/${encodeURIComponent(name)}`)
   })
 
   // --- send one ---

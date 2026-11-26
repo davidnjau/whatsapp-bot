@@ -1,23 +1,68 @@
-{% extends "layout.njk" %}
-{% block title %}Templates — WhatsApp Bot{% endblock %}
-{% block content %}
-<div class="flex items-center justify-between">
-  <h1 class="text-lg font-semibold">Message templates</h1>
-  <a href="/admin/templates/new" class="text-sm bg-emerald-700 text-white rounded-lg px-3 py-2">New template</a>
-</div>
-<div class="bg-white rounded-xl shadow divide-y">
-  {% for t in templates %}
-  <a href="/admin/templates/{{ t.name | urlencode }}" class="block p-4 hover:bg-gray-50">
-    <div class="flex items-center justify-between">
-      <p class="font-mono text-sm font-medium">{{ t.name }}</p>
-      <p class="text-xs text-gray-400">
-        {% for v in t.vars %}<span class="font-mono">{{ '{{' }}{{ v }}{{ '}}' }}</span> {% endfor %}
-      </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Message templates — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/templates.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+      <a class="nav-link" href="/admin">Overview</a>
+      <p class="nav-group">Shop</p>
+      <a class="nav-link" href="/admin/catalogue">Dresses</a>
+      <a class="nav-link" href="/admin/orders">Orders</a>
+      <a class="nav-link" href="/admin/coupons">Coupons</a>
+      <a class="nav-link" href="/admin/campaigns">Campaigns</a>
+      <a class="nav-link" href="/admin/carts">Carts</a>
+      <a class="nav-link" href="/shop" target="_blank" rel="noopener">View shop <svg class="icon"><use href="#i-ext"/></svg></a>
+      <p class="nav-group">GPU &amp; ingest</p>
+      <a class="nav-link" href="/admin/gpu">Spend &amp; health</a>
+      <p class="nav-group">Bot</p>
+      <a class="nav-link" href="/admin/chats">Chats</a>
+      <a class="nav-link" href="/admin/knowledge">Knowledge</a>
+      <a class="nav-link" href="/admin/groups">Groups</a>
+      <a class="nav-link" href="/admin/status">Status</a>
+      <a class="nav-link" href="/admin/notify">Notify</a>
+      <a class="nav-link" href="/admin/templates" aria-current="page">Templates</a>
+      <a class="nav-link" href="/admin/contacts">Contacts</a>
+    </aside>
+
+    <main class="content">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+        <svg class="icon"><use href="#i-menu"/></svg>
+      </button>
+      <div id="app"></div>
+    </main>
+  </div>
+
+  <div class="savebar" id="savebar" role="region" aria-label="Save template">
+    <span class="status" id="saveStatus">Unsaved changes</span>
+    <div class="actions">
+      <button type="button" class="btn-ghost" id="discardBtn">Discard</button>
+      <button type="button" class="btn-primary" id="saveBtn">Save template</button>
     </div>
-    <p class="text-sm text-gray-500 truncate">{{ t.body }}</p>
-  </a>
-  {% else %}
-  <p class="p-4 text-sm text-gray-500">No templates.</p>
-  {% endfor %}
-</div>
-{% endblock %}
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span><button type="button" hidden>Undo</button></div>
+
+  <script>window.TEMPLATES = {{ templatesJson | safe }};</script>
+  <script src="/static/templates.js"></script>
+</body>
+</html>
