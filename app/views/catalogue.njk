@@ -78,6 +78,14 @@
       </div>
       {% endfor %}
     </div>
+    {% if not enrichingCount %}
+    <div style="margin-top:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:13px">
+      <span class="e-muted">Enrich:</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="both" checked style="accent-color:var(--accent)"> Images + text</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="images" style="accent-color:var(--accent)"> Images only</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="text" style="accent-color:var(--accent)"> Text only</label>
+    </div>
+    {% endif %}
     <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
       <button class="e-btn e-btn-olive"{% if enrichingCount %} disabled style="opacity:.5;cursor:not-allowed"{% endif %}
               onclick="var b=this;setTimeout(function(){b.disabled=true;b.textContent='⏳ Queuing…'},0)">✨ Enrich selected with AI</button>

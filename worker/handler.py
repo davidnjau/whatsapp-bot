@@ -164,73 +164,83 @@ def run_siglip(img: Image.Image) -> list[float]:
 
 def ingest_product(inp: dict) -> dict:
     t0 = time.time()
+    # Admin can enrich just the images, just the text, or both — skip the other
+    # half to save GPU. Defaults keep older callers getting everything.
+    want_images = inp.get("want_images", True)
+    want_text = inp.get("want_text", True)
     img = download_image(inp["image_url"])
-    cutout, studio = run_birefnet(img)
-
     sizes = ", ".join(inp.get("available_sizes") or []) or "unspecified"
-    # Shop-confirmed facts the model must respect exactly (colour / size / fabric
-    # are locked by the admin — never re-guess or contradict them).
-    locked = []
-    if (inp.get("colour") or "").strip():
-        locked.append(f'colour is "{inp["colour"].strip()}"')
-    if (inp.get("fabric") or "").strip():
-        locked.append(f'fabric is "{inp["fabric"].strip()}"')
-    if sizes != "unspecified":
-        locked.append(f"available sizes are {sizes}")
-    facts = (
-        "The shop has CONFIRMED the following and they are AUTHORITATIVE — use them "
-        "exactly in every field and do NOT describe a different colour, pattern, "
-        "fabric, material or size: " + "; ".join(locked) + ".\n"
-        if locked else ""
-    )
-    system = (
-        "You are a senior fashion e-commerce merchandiser and copywriter for a "
-        "Kenyan women's boutique. You write warm, honest, persuasive catalogue copy. "
-        "When the shop confirms a colour, fabric or size, you treat it as ground "
-        "truth and never contradict it, even if the photo looks different."
-    )
-    user = (
-        f"Analyse this {inp.get('category', 'dress')} photo. "
-        f"Price: {inp.get('price', 'unknown')}. Available sizes: {sizes}.\n"
-        + facts +
-        "Respond with ONLY a JSON object, no prose, with exactly these keys "
-        "(echo the confirmed colour/fabric above when provided):\n"
-        "{\n"
-        '  "title": "catchy e-commerce product title",\n'
-        '  "whatsapp_description": "clean persuasive bulleted copy for WhatsApp Business '
-        "(include price, sizes, neckline, sleeve style, length)\",\n"
-        '  "social_caption": "engaging Instagram/TikTok caption with styling tips and hashtags",\n'
-        '  "occasions": ["3-5 occasions"],\n'
-        '  "colour": "main colour(s)",\n'
-        '  "length": "e.g. Midi, below the knee",\n'
-        '  "fit_profile": { "estimated_fabric": "", "stretch_level": "none|low|medium|high", '
-        '"silhouette": "bodycon|a-line|flowy|structured", "fit_notes": "" }\n'
-        "}"
-    )
-    meta = parse_json(run_qwen(system, user, img))
-    embedding = run_siglip(img)
-    # Ready-to-post card with the confirmed colour/size/fabric baked in. Falls
-    # back to the model's colour when the shop hasn't set one yet.
-    card = product_card(
-        cutout,
-        (inp.get("colour") or meta.get("colour") or "").strip(),
-        sizes,
-        (inp.get("fabric") or (meta.get("fit_profile") or {}).get("estimated_fabric") or "").strip(),
-    )
-    return {
-        "cutout_b64": pil_to_b64(cutout, "PNG"),
-        "studio_b64": pil_to_b64(studio, "PNG"),
-        "card_b64": pil_to_b64(card, "PNG"),
-        "title": meta.get("title"),
-        "whatsapp_description": meta.get("whatsapp_description"),
-        "social_caption": meta.get("social_caption"),
-        "occasions": meta.get("occasions"),
-        "colour": meta.get("colour"),
-        "length": meta.get("length"),
-        "fit_profile": meta.get("fit_profile", {}),
-        "embedding": embedding,
-        "exec_ms": int((time.time() - t0) * 1000),
-    }
+    result: dict = {}
+
+    meta: dict = {}
+    if want_text:
+        # Shop-confirmed facts the model must respect exactly (colour / size /
+        # fabric are locked by the admin — never re-guess or contradict them).
+        locked = []
+        if (inp.get("colour") or "").strip():
+            locked.append(f'colour is "{inp["colour"].strip()}"')
+        if (inp.get("fabric") or "").strip():
+            locked.append(f'fabric is "{inp["fabric"].strip()}"')
+        if sizes != "unspecified":
+            locked.append(f"available sizes are {sizes}")
+        facts = (
+            "The shop has CONFIRMED the following and they are AUTHORITATIVE — use them "
+            "exactly in every field and do NOT describe a different colour, pattern, "
+            "fabric, material or size: " + "; ".join(locked) + ".\n"
+            if locked else ""
+        )
+        system = (
+            "You are a senior fashion e-commerce merchandiser and copywriter for a "
+            "Kenyan women's boutique. You write warm, honest, persuasive catalogue copy. "
+            "When the shop confirms a colour, fabric or size, you treat it as ground "
+            "truth and never contradict it, even if the photo looks different."
+        )
+        user = (
+            f"Analyse this {inp.get('category', 'dress')} photo. "
+            f"Price: {inp.get('price', 'unknown')}. Available sizes: {sizes}.\n"
+            + facts +
+            "Respond with ONLY a JSON object, no prose, with exactly these keys "
+            "(echo the confirmed colour/fabric above when provided):\n"
+            "{\n"
+            '  "title": "catchy e-commerce product title",\n'
+            '  "whatsapp_description": "clean persuasive bulleted copy for WhatsApp Business '
+            "(include price, sizes, neckline, sleeve style, length)\",\n"
+            '  "social_caption": "engaging Instagram/TikTok caption with styling tips and hashtags",\n'
+            '  "occasions": ["3-5 occasions"],\n'
+            '  "colour": "main colour(s)",\n'
+            '  "length": "e.g. Midi, below the knee",\n'
+            '  "fit_profile": { "estimated_fabric": "", "stretch_level": "none|low|medium|high", '
+            '"silhouette": "bodycon|a-line|flowy|structured", "fit_notes": "" }\n'
+            "}"
+        )
+        meta = parse_json(run_qwen(system, user, img))
+        result.update({
+            "title": meta.get("title"),
+            "whatsapp_description": meta.get("whatsapp_description"),
+            "social_caption": meta.get("social_caption"),
+            "occasions": meta.get("occasions"),
+            "colour": meta.get("colour"),
+            "length": meta.get("length"),
+            "fit_profile": meta.get("fit_profile", {}),
+        })
+
+    if want_images:
+        cutout, studio = run_birefnet(img)
+        # Ready-to-post card with the confirmed colour/size/fabric baked in; falls
+        # back to the model's colour when the shop hasn't set one yet.
+        card = product_card(
+            cutout,
+            (inp.get("colour") or meta.get("colour") or "").strip(),
+            sizes,
+            (inp.get("fabric") or (meta.get("fit_profile") or {}).get("estimated_fabric") or "").strip(),
+        )
+        result["cutout_b64"] = pil_to_b64(cutout, "PNG")
+        result["studio_b64"] = pil_to_b64(studio, "PNG")
+        result["card_b64"] = pil_to_b64(card, "PNG")
+        result["embedding"] = run_siglip(img)
+
+    result["exec_ms"] = int((time.time() - t0) * 1000)
+    return result
 
 
 def fit_advisor(inp: dict) -> dict:

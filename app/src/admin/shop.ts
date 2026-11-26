@@ -45,6 +45,7 @@ import { createCoupon, defaultCouponExpiry, listCoupons, setCouponActive } from 
 import { saveMedia } from '../modules/status/media.js'
 import { ingestConfigured } from '../modules/shop/runpod.js'
 import { enqueueIngest } from '../queue/index.js'
+import type { IngestMode } from '../modules/shop/ingest.js'
 import { requireWebAuth } from './auth.js'
 
 export const adminShopRoutes: FastifyPluginAsync = async (app) => {
@@ -198,13 +199,14 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
   })
 
   // Enrich a selected batch of recent uploads (checkboxes from the panel).
-  app.post<{ Body: { ids?: string | string[] } }>('/admin/catalogue/enrich-batch', async (req, reply) => {
+  app.post<{ Body: { ids?: string | string[]; mode?: string } }>('/admin/catalogue/enrich-batch', async (req, reply) => {
     const raw = req.body?.ids
     const ids = (Array.isArray(raw) ? raw : raw ? [raw] : []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    const mode: IngestMode = req.body?.mode === 'images' || req.body?.mode === 'text' ? req.body.mode : 'both'
     await markEnrichQueued(ids)
     for (const id of ids) {
       await setAiSkipped(id, false)
-      await enqueueIngest(id)
+      await enqueueIngest(id, mode)
     }
     const msg = !ids.length
       ? 'Pick at least one photo to enrich.'

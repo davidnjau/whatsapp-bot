@@ -63,7 +63,9 @@
   </div>
 
   <form method="post" action="/admin/catalogue/{{ product.id }}/media/upload" enctype="multipart/form-data"
+        onsubmit="var b=this.querySelector('button');if(b){b.disabled=true;b.innerHTML='<span class=&quot;up-spin&quot;></span> Uploading…'}"
         style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 20px">
+    <style>.up-spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;vertical-align:-2px;margin-right:4px;animation:upSpin .7s linear infinite}@keyframes upSpin{to{transform:rotate(360deg)}}</style>
     <input type="file" name="files" accept="image/*,video/*" multiple required style="font-size:14px">
     <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Add as
       <select name="kind" class="e-input" style="padding:8px 10px">

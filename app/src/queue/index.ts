@@ -3,7 +3,7 @@ import { config } from '../config.js'
 import { query } from '../db.js'
 import { log } from '../logger.js'
 import { processSendJobs } from './worker.js'
-import { runIngest } from '../modules/shop/ingest.js'
+import { runIngest, type IngestMode } from '../modules/shop/ingest.js'
 
 export const OUTBOUND_QUEUE = 'outbound'
 export const INGEST_QUEUE = 'shop_ingest'
@@ -14,6 +14,7 @@ export interface SendJobData {
 
 export interface IngestJobData {
   productId: number
+  mode?: IngestMode
 }
 
 export const boss = new PgBoss({ connectionString: config.databaseUrl, schema: 'pgboss' })
@@ -36,14 +37,14 @@ export async function startQueue() {
     retryBackoff: true,
   })
   await boss.work<IngestJobData>(INGEST_QUEUE, { batchSize: 1 }, async (jobs) => {
-    for (const job of jobs) await runIngest(job.data.productId)
+    for (const job of jobs) await runIngest(job.data.productId, job.data.mode ?? 'both')
   })
   log.info('send queue started')
 }
 
 // Queue an AI digitization run for a product (dormant unless the worker is set).
-export async function enqueueIngest(productId: number): Promise<void> {
-  await boss.send(INGEST_QUEUE, { productId })
+export async function enqueueIngest(productId: number, mode: IngestMode = 'both'): Promise<void> {
+  await boss.send(INGEST_QUEUE, { productId, mode })
 }
 
 export interface EnqueueSendOptions {
