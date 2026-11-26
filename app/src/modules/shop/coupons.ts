@@ -42,6 +42,10 @@ export async function setCouponActive(id: number, active: boolean): Promise<void
   await query('UPDATE coupons SET active = $2 WHERE id = $1', [id, active])
 }
 
+export async function deleteCoupon(id: number): Promise<void> {
+  await query('DELETE FROM coupons WHERE id = $1', [id])
+}
+
 // A usable coupon: active, not expired, under its usage cap.
 export async function getValidCoupon(code: string): Promise<Coupon | null> {
   const res = await query<Coupon>(

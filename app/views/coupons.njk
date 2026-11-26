@@ -1,68 +1,313 @@
-{% extends "layout.njk" %}
-{% block title %}Coupons — Dress Nation Admin{% endblock %}
-{% block content %}
-<div style="margin-bottom:20px">
-  <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
-  <h1 class="e-h1" style="margin:0">Coupons</h1>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coupons — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ivory:oklch(98.5% .006 80);--charcoal:oklch(24% .012 60);--wine:oklch(42% .115 18);
+      --olive:oklch(47% .07 130);--sand:oklch(93.5% .02 75);--stone:oklch(82% .022 70);
+      --background:var(--ivory);--foreground:var(--charcoal);--card:oklch(99.5% .003 80);
+      --accent:oklch(95.5% .015 75);--border:oklch(89% .018 72);--input:oklch(86% .02 72);
+      --muted-foreground:oklch(47% .02 60);--primary:var(--wine);--primary-foreground:var(--ivory);
+      --destructive:oklch(50% .16 30);--status:var(--olive);--status-soft:oklch(93% .035 125);
+      --radius-field:18px;--radius-card:22px;
+      --shadow-soft:0 1px 2px oklch(24% .012 60 / .04),0 8px 24px -12px oklch(24% .012 60 / .18);
+      --ease-soft:cubic-bezier(.22,1,.36,1);
+    }
+    *{box-sizing:border-box;margin:0}
+    body{font-family:"Jost",ui-sans-serif,system-ui,sans-serif;background:var(--background);color:var(--foreground);font-size:16px;line-height:1.5}
+    button,input{font:inherit;color:inherit}
+    a{color:inherit}
+    .icon{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 20px;background:color-mix(in oklch,var(--ivory) 85%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+    .brand{font-weight:500;font-size:18px;text-decoration:none}
+    .brand span{color:var(--muted-foreground);font-weight:300}
+    .topbar nav{display:flex;gap:28px;font-size:15px}
+    .topbar nav a{display:flex;align-items:center;gap:8px;text-decoration:none}
+    .badge-count{background:var(--wine);color:var(--ivory);font-size:11px;border-radius:999px;padding:0 7px;line-height:18px}
+    .page{max-width:1024px;margin:0 auto;padding:40px 20px 64px}
+    .back{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--muted-foreground);text-decoration:none}
+    .eyebrow{margin-top:28px;font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500}
+    h1{font-size:36px;font-weight:300;letter-spacing:-.9px;line-height:1.2;margin-top:4px}
+    .lede{margin-top:8px;color:var(--muted-foreground)}
+    .card{background:var(--card);border-radius:var(--radius-card);box-shadow:var(--shadow-soft);padding:24px;margin-top:32px}
+    .card + .card{margin-top:24px}
+    .card h2{font-size:18px;font-weight:500}
+    .card-head{display:flex;gap:12px;align-items:center}
+    .icon-circle{width:40px;height:40px;border-radius:50%;background:var(--sand);display:grid;place-items:center;flex:none}
+    .icon-circle .icon{width:20px;height:20px;stroke-width:1.25}
+    .card-head p{font-size:14px;color:var(--muted-foreground)}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+    .grid-new{display:grid;grid-template-columns:2fr 1fr 1.45fr 1.15fr;gap:12px;margin-top:20px;align-items:start}
+    .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .field>label{font-size:14px;font-weight:500}
+    .hint{font-size:12.5px;color:var(--muted-foreground)}
+    .error{font-size:12.5px;color:var(--destructive)}
+    .input{height:48px;padding:0 16px;width:100%;background:var(--card);border:1px solid var(--input);border-radius:var(--radius-field);transition:border-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft)}
+    .input::placeholder{color:var(--muted-foreground);opacity:.8}
+    .input:focus,.suffix-wrap:focus-within{outline:none;border-color:var(--wine);box-shadow:0 0 0 3px color-mix(in oklch,var(--wine) 15%,transparent)}
+    .input[aria-invalid="true"]{border-color:var(--destructive)}
+    .input.code{text-transform:uppercase;letter-spacing:.04em}
+    .suffix-wrap{display:flex;align-items:center;height:48px;border:1px solid var(--input);border-radius:var(--radius-field);background:var(--card);transition:border-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft)}
+    .suffix-wrap input{flex:1;min-width:0;height:100%;border:0;background:transparent;padding:0 16px;outline:none}
+    .suffix-wrap span{padding-right:16px;font-size:14px;color:var(--muted-foreground);white-space:nowrap}
+    input[type=number]::-webkit-inner-spin-button{opacity:.4}
+    .example{margin-top:16px;background:var(--sand);border-radius:var(--radius-field);padding:12px 16px;font-size:14px}
+    .actions{display:flex;justify-content:flex-end;margin-top:16px}
+    .btn-primary{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:500;letter-spacing:.375px;box-shadow:var(--shadow-soft);cursor:pointer;transition:opacity .2s,transform .2s var(--ease-soft)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+    .list-title{margin-top:40px;font-size:14px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-foreground)}
+    .coupons{list-style:none;padding:0;margin-top:12px;display:flex;flex-direction:column;gap:12px}
+    .coupon{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;background:var(--card);border-radius:var(--radius-card);box-shadow:var(--shadow-soft);padding:16px;animation:in .35s var(--ease-soft)}
+    @keyframes in{from{opacity:0;transform:translateY(6px)}}
+    .coupon.is-off{opacity:.7}
+    .coupon .meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+    .coupon .code{font-size:17px;font-weight:500;letter-spacing:.06em;margin-right:4px}
+    .chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;line-height:16px;background:var(--accent)}
+    .chip.active{background:var(--status-soft);color:var(--status)}
+    .chip.paused,.chip.expired,.chip.used-up{background:var(--sand);color:var(--muted-foreground)}
+    .coupon .ends{font-size:13px;color:var(--muted-foreground)}
+    .coupon .usage{font-size:14px;color:var(--muted-foreground);white-space:nowrap;padding:0 24px}
+    .coupon .usage b{color:var(--foreground);font-weight:600}
+    .coupon .btns{display:flex;gap:8px}
+    .icon-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--input);cursor:pointer;transition:background .2s var(--ease-soft),border-color .2s var(--ease-soft)}
+    .icon-btn:hover{background:var(--accent)}
+    .icon-btn:disabled{opacity:.4;cursor:not-allowed}
+    .icon-btn.danger:hover{border-color:var(--destructive);color:var(--destructive)}
+    .icon-btn:focus-visible,.btn-primary:focus-visible{outline:2px solid var(--wine);outline-offset:2px}
+    .empty{margin-top:12px;padding:32px;text-align:center;border:1px dashed var(--input);border-radius:var(--radius-card);color:var(--muted-foreground);font-size:14px}
+    .footnote{margin-top:24px;font-size:13px;color:var(--muted-foreground)}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;display:flex;gap:14px;align-items:center;background:var(--charcoal);color:var(--ivory);padding:10px 18px;border-radius:999px;font-size:14px;transition:all .3s var(--ease-soft);pointer-events:none;z-index:40}
+    .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+    .toast button{background:none;border:0;color:var(--ivory);font-weight:600;text-decoration:underline;cursor:pointer}
+    @media (max-width:820px){.grid-new{grid-template-columns:1fr 1fr}.coupon{grid-template-columns:1fr auto}.coupon .usage{grid-column:1;padding:0}.coupon .btns{grid-column:2;grid-row:1 / span 2}}
+    @media (max-width:560px){.grid-3,.grid-new{grid-template-columns:1fr}.topbar nav .lbl{display:none}h1{font-size:30px}.actions .btn-primary{width:100%;justify-content:center}.coupon{grid-template-columns:1fr}.coupon .btns{grid-column:1;grid-row:auto}}
+    [hidden]{display:none !important}
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 7h12l1 14H5zM9 7a3 3 0 0 1 6 0"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+  </svg>
 
-{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+  <header class="topbar">
+    <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+    <nav>
+      <a href="/admin/orders"><svg class="icon"><use href="#i-box"/></svg><span class="lbl">Orders</span></a>
+      <a href="/shop" target="_blank"><svg class="icon"><use href="#i-bag"/></svg><span class="lbl">View shop</span></a>
+    </nav>
+  </header>
 
-<form method="post" action="/admin/loyalty" class="e-card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px">
-  <div style="flex:1 1 200px">
-    <h2 style="margin:0 0 6px;font-size:18px;font-weight:500">Loyalty reward</h2>
-    <p class="e-muted" style="font-size:13px;margin:0">Customers earn a coupon automatically after every N paid orders.</p>
-  </div>
-  <label style="font-size:13px;color:var(--muted)">After every<input name="n" type="number" min="1" max="50" value="{{ loyaltyN }}" class="e-input" style="display:block;margin-top:4px;width:80px"> paid orders</label>
-  <label style="font-size:13px;color:var(--muted)">Give<input name="percent" type="number" min="1" max="100" value="{{ loyaltyPercent }}" class="e-input" style="display:block;margin-top:4px;width:80px"> % off</label>
-  <label style="font-size:13px;color:var(--muted)">Coupons expire after<input name="couponDays" type="number" min="1" max="365" value="{{ couponDays }}" class="e-input" style="display:block;margin-top:4px;width:80px"> days (default)</label>
-  <button class="e-btn e-btn-dark">Save settings</button>
-</form>
+  <main class="page">
+    <a class="back" href="/admin"><svg class="icon"><use href="#i-back"/></svg>Admin</a>
+    <p class="eyebrow">Shop</p>
+    <h1>Coupons</h1>
+    <p class="lede">Reward loyal customers and run quick promotions.</p>
 
-<form method="post" action="/admin/coupons" class="e-card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px">
-  <label style="font-size:13px;color:var(--muted)">Code<input name="code" required placeholder="CHRISTMAS" class="e-input" style="display:block;margin-top:4px;text-transform:uppercase"></label>
-  <label style="font-size:13px;color:var(--muted)">% off<input name="percent" type="number" min="1" max="100" required placeholder="10" class="e-input" style="display:block;margin-top:4px;width:90px"></label>
-  <label style="font-size:13px;color:var(--muted)">Expires (optional)<input name="expires" type="date" class="e-input" style="display:block;margin-top:4px"></label>
-  <label style="font-size:13px;color:var(--muted)">Max uses (optional)<input name="maxUses" type="number" min="1" class="e-input" style="display:block;margin-top:4px;width:110px"></label>
-  <button class="e-btn e-btn-dark">Save coupon</button>
-</form>
-
-{% if coupons.length %}
-<div style="display:flex;flex-direction:column;gap:12px">
-  {% for c in coupons %}
-  <div class="e-card dn-row" style="display:flex;gap:14px;padding:14px;align-items:flex-start">
-    <div style="flex:1 1 auto;min-width:0">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-weight:500;font-size:15px;letter-spacing:.02em">{{ c.code }}</span>
-        <span class="e-tag" style="background:var(--panel);color:var(--ink)">{{ c.percent }}% off</span>
-        <span class="e-tag" style="{% if c.active %}background:var(--accent);color:#fff{% else %}background:var(--panel);color:var(--muted){% endif %}">{{ 'active' if c.active else 'off' }}</span>
-        {% if c.expires_at %}<span class="e-tag" style="background:#f3dcd3;color:#7a1f2b">ends {{ c.expires_at | date }}</span>{% endif %}
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-          <form method="post" action="/admin/coupons/{{ c.id }}/toggle">
-            <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
-            <button class="dn-icon {{ 'on' if c.active }}" title="{{ 'Active — click to turn off' if c.active else 'Off — click to activate' }}" aria-label="Toggle coupon">⏻</button>
-          </form>
-          <div class="dn-kebab">
-            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
-            <div class="dn-menu">
-              <button type="button" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText('{{ c.code }}')">Copy code</button>
-              <form method="post" action="/admin/coupons/{{ c.id }}/toggle">
-                <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
-                <button>{{ 'Deactivate' if c.active else 'Activate' }}</button>
-              </form>
-            </div>
-          </div>
+    <!-- ============ Loyalty reward ============ -->
+    <form class="card" id="loyaltyForm" method="post" action="/admin/loyalty" novalidate>
+      <div class="card-head">
+        <span class="icon-circle"><svg class="icon"><use href="#i-gift"/></svg></span>
+        <div>
+          <h2>Loyalty reward</h2>
+          <p id="loyaltySummary">Customers get a coupon automatically after every {{ loyaltyN }} paid orders.</p>
         </div>
       </div>
-      <p class="e-muted" style="font-size:13px;margin:8px 0 0">
-        Used {{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}
-        {% if not c.expires_at %} · no expiry{% endif %}
-      </p>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% else %}
-<p class="e-muted e-card" style="font-size:14px">No coupons yet. Create one above — e.g. a Christmas code at 10% off.</p>
-{% endif %}
-{% endblock %}
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="every">After every</label>
+          <div class="suffix-wrap"><input id="every" name="n" type="number" min="1" max="50" step="1" inputmode="numeric" value="{{ loyaltyN }}" /><span>paid orders</span></div>
+        </div>
+        <div class="field">
+          <label for="give">Give</label>
+          <div class="suffix-wrap"><input id="give" name="percent" type="number" min="1" max="90" step="1" inputmode="numeric" value="{{ loyaltyPercent }}" /><span>% off</span></div>
+        </div>
+        <div class="field">
+          <label for="lasts">Coupon lasts</label>
+          <div class="suffix-wrap"><input id="lasts" name="couponDays" type="number" min="1" max="365" step="1" inputmode="numeric" value="{{ couponDays }}" /><span>days</span></div>
+        </div>
+      </div>
+      <span class="error" id="loyaltyError" hidden></span>
+      <p class="example" id="loyaltyExample" aria-live="polite"></p>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" id="saveReward" disabled>Save reward</button>
+      </div>
+    </form>
+
+    <!-- ============ New coupon ============ -->
+    <form class="card" id="couponForm" method="post" action="/admin/coupons" novalidate>
+      <h2>New coupon</h2>
+      <div class="grid-new">
+        <div class="field">
+          <label for="code">Code</label>
+          <input class="input code" id="code" name="code" placeholder="CHRISTMAS" maxlength="20" autocomplete="off" spellcheck="false" />
+          <span class="error" id="codeError" hidden></span>
+        </div>
+        <div class="field">
+          <label for="pct">% off</label>
+          <input class="input" id="pct" name="percent" type="number" min="1" max="90" value="10" inputmode="numeric" />
+          <span class="error" id="pctError" hidden></span>
+        </div>
+        <div class="field">
+          <label for="ends">Ends (optional)</label>
+          <input class="input" id="ends" name="expires" type="date" />
+          <span class="hint">Works through this day</span>
+        </div>
+        <div class="field">
+          <label for="maxUses">Max uses (optional)</label>
+          <input class="input" id="maxUses" name="maxUses" type="number" min="1" placeholder="No limit" inputmode="numeric" />
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn-primary" id="createBtn"><svg class="icon"><use href="#i-ticket"/></svg>Create coupon</button>
+      </div>
+    </form>
+
+    <!-- ============ List ============ -->
+    <h2 class="list-title" id="listTitle">Your coupons · {{ coupons.length }}</h2>
+    <ul class="coupons" id="coupons" aria-labelledby="listTitle">
+      {% for c in coupons %}
+      {% set cls = c._status | replace('_','-') %}
+      <li class="coupon {{ 'is-off' if c._status != 'active' }}" data-id="{{ c.id }}">
+        <div class="meta">
+          <span class="code">{{ c.code }}</span>
+          <span class="chip">{{ c.percent }}% off</span>
+          <span class="chip {{ cls }}">{% if c._status == 'expired' %}Expired{% elif c._status == 'used_up' %}Used up{% elif c._status == 'paused' %}Paused{% else %}Active{% endif %}</span>
+          <span class="ends">{% if c.expires_at %}Ends {{ c.expires_at | date }}{% else %}No end date{% endif %}</span>
+        </div>
+        <div class="usage"><b>{{ c.used_count }}</b> used · {% if c.max_uses %}{{ c.max_uses }} max{% else %}no limit{% endif %}</div>
+        <div class="btns">
+          <button type="button" class="icon-btn" data-act="copy" data-code="{{ c.code }}" aria-label="Copy {{ c.code }}" title="Copy code"><svg class="icon"><use href="#i-copy"/></svg></button>
+          <form method="post" action="/admin/coupons/{{ c.id }}/toggle" style="display:contents">
+            <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+            <button type="submit" class="icon-btn" aria-label="{{ 'Pause' if c.active else 'Resume' }} {{ c.code }}" title="{{ 'Pause' if c.active else 'Resume' }}" {{ 'disabled' if c._status == 'expired' or c._status == 'used_up' }}><svg class="icon"><use href="#i-{{ 'pause' if c.active else 'play' }}"/></svg></button>
+          </form>
+          <form method="post" action="/admin/coupons/{{ c.id }}/delete" id="delform-{{ c.id }}" hidden></form>
+          <button type="button" class="icon-btn danger" data-act="delete" data-id="{{ c.id }}" data-code="{{ c.code }}" aria-label="Delete {{ c.code }}" title="Delete"><svg class="icon"><use href="#i-trash"/></svg></button>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="empty" id="empty" {{ 'hidden' if coupons.length }}>No coupons yet. Create one above.</p>
+
+    <p class="footnote">Coupons apply at checkout; uniqueness, limits and expiry are enforced on the server.</p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span><button type="button" hidden>Undo</button></div>
+
+  <script>
+  (() => {
+    "use strict";
+    const $ = s => document.querySelector(s);
+    const TZ = "Africa/Nairobi";
+    const existingCodes = [{% for c in coupons %}"{{ c.code }}"{% if not loop.last %},{% endif %}{% endfor %}];
+
+    // ---- helpers ----
+    const ordinal = n => { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); };
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const int = v => (v === "" || v == null ? NaN : Number(v));
+    const isWhole = n => Number.isInteger(n);
+    const todayNairobi = () => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
+
+    // ---- Loyalty reward ----
+    const L = { every: $("#every"), give: $("#give"), lasts: $("#lasts") };
+    const initial = { every: int(L.every.value), give: int(L.give.value), lasts: int(L.lasts.value) };
+    const saveReward = $("#saveReward");
+    const read = () => ({ every: int(L.every.value), give: int(L.give.value), lasts: int(L.lasts.value) });
+    function errors(v) {
+      const e = [];
+      if (!isWhole(v.every) || v.every < 1 || v.every > 50) e.push(["every", "Orders must be 1–50."]);
+      if (!isWhole(v.give) || v.give < 1 || v.give > 90) e.push(["give", "Discount must be 1–90%."]);
+      if (!isWhole(v.lasts) || v.lasts < 1 || v.lasts > 365) e.push(["lasts", "Days must be 1–365."]);
+      return e;
+    }
+    function renderLoyalty() {
+      const v = read(), errs = errors(v);
+      Object.values(L).forEach(i => i.parentElement.style.borderColor = "");
+      errs.forEach(([k]) => L[k].parentElement.style.borderColor = "var(--destructive)");
+      $("#loyaltyError").hidden = !errs.length;
+      $("#loyaltyError").textContent = errs.map(e => e[1]).join(" ");
+      if (!errs.length) $("#loyaltyExample").textContent =
+        `Example: a customer's ${ordinal(v.every)} paid order earns ${v.give}% off their next dress, valid for ${plural(v.lasts, "day", "days")}.`;
+      const changed = v.every !== initial.every || v.give !== initial.give || v.lasts !== initial.lasts;
+      saveReward.disabled = !changed || errs.length > 0;
+    }
+    Object.values(L).forEach(i => i.addEventListener("input", renderLoyalty));
+    renderLoyalty();
+
+    // ---- New coupon (client-side guards; server re-validates) ----
+    const F = { code: $("#code"), pct: $("#pct"), ends: $("#ends"), maxUses: $("#maxUses") };
+    F.ends.min = todayNairobi();
+    function setErr(field, msg) { const el = $(`#${field}Error`); if (el) { el.textContent = msg; el.hidden = !msg; } F[field].setAttribute("aria-invalid", msg ? "true" : "false"); }
+    F.code.addEventListener("input", () => {
+      const pos = F.code.selectionStart;
+      F.code.value = F.code.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      try { F.code.setSelectionRange(pos, pos); } catch(e){}
+      setErr("code", "");
+    });
+    F.pct.addEventListener("input", () => setErr("pct", ""));
+    $("#couponForm").addEventListener("submit", e => {
+      const code = F.code.value.trim(), pct = int(F.pct.value);
+      const maxUses = F.maxUses.value ? int(F.maxUses.value) : null;
+      let ok = true;
+      if (code.length < 3) { setErr("code", "Use at least 3 letters or numbers."); ok = false; }
+      else if (existingCodes.includes(code)) { setErr("code", `${code} already exists.`); ok = false; }
+      if (!isWhole(pct) || pct < 1 || pct > 90) { setErr("pct", "1–90%."); ok = false; }
+      if (maxUses !== null && (!isWhole(maxUses) || maxUses < 1)) { F.maxUses.setAttribute("aria-invalid", "true"); ok = false; }
+      if (F.ends.value && F.ends.value < todayNairobi()) { F.ends.setAttribute("aria-invalid", "true"); ok = false; }
+      if (!ok) { e.preventDefault(); (document.querySelector('[aria-invalid="true"]') || F.code).focus(); }
+    });
+
+    // ---- List actions: copy + deferred delete with Undo ----
+    $("#coupons").addEventListener("click", async e => {
+      const btn = e.target.closest("[data-act]"); if (!btn) return;
+      if (btn.dataset.act === "copy") {
+        try { await navigator.clipboard.writeText(btn.dataset.code); } catch (_) {}
+        const use = btn.querySelector("use"); use.setAttribute("href", "#i-check");
+        setTimeout(() => use.setAttribute("href", "#i-copy"), 1400);
+        toast(`${btn.dataset.code} copied`);
+      }
+      if (btn.dataset.act === "delete") {
+        const id = btn.dataset.id, li = btn.closest(".coupon");
+        li.hidden = true;                                   // hide immediately
+        let timer = setTimeout(() => $(`#delform-${id}`).submit(), 5000); // commit after 5s
+        toast(`${btn.dataset.code} deleted`, () => { clearTimeout(timer); li.hidden = false; });
+      }
+    });
+
+    // ---- Toast ----
+    let toastTimer;
+    function toast(msg, onUndo) {
+      const t = $("#toast"), undo = t.querySelector("button");
+      t.querySelector("span").textContent = msg;
+      undo.hidden = !onUndo;
+      undo.onclick = onUndo ? () => { onUndo(); t.classList.remove("show"); } : null;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), onUndo ? 5000 : 2200);
+    }
+
+    // Surface the server's redirect message as a toast.
+    (function(){ const m = {{ (message or '') | dump | safe }}; if (m) toast(m); })();
+  })();
+  </script>
+</body>
+</html>
+{# standalone page — intentionally does not extend layout.njk (own top bar per spec) #}

@@ -41,7 +41,7 @@ import {
 import { productName } from '../modules/shop/label.js'
 import { toChatId } from '../lib/phone.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
-import { createCoupon, defaultCouponExpiry, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
+import { createCoupon, defaultCouponExpiry, deleteCoupon, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
 import { saveMedia } from '../modules/status/media.js'
 import { ingestConfigured } from '../modules/shop/runpod.js'
 import { enqueueIngest } from '../queue/index.js'
@@ -336,12 +336,20 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // --- coupons ---
   app.get<{ Querystring: { message?: string } }>('/admin/coupons', async (req, reply) => {
-    const [coupons, loyaltyN, loyaltyPercent, couponDays] = await Promise.all([
+    const [rawCoupons, loyaltyN, loyaltyPercent, couponDays] = await Promise.all([
       listCoupons(),
       getSetting('loyalty_n', '3'),
       getSetting('loyalty_percent', '10'),
       getSetting('coupon_default_days', '7'),
     ])
+    const now = Date.now()
+    const coupons = rawCoupons.map((c) => {
+      let status: 'active' | 'paused' | 'expired' | 'used_up' = 'active'
+      if (c.expires_at && new Date(c.expires_at).getTime() < now) status = 'expired'
+      else if (c.max_uses && c.used_count >= c.max_uses) status = 'used_up'
+      else if (!c.active) status = 'paused'
+      return { ...c, _status: status }
+    })
     return reply.view('coupons.njk', {
       authed: true,
       coupons,
@@ -390,6 +398,11 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     const active = z.object({ active: z.enum(['on', 'off']) }).parse(req.body ?? {}).active === 'on'
     await setCouponActive(Number(req.params.id), active)
     return reply.redirect('/admin/coupons?message=Updated')
+  })
+
+  app.post<{ Params: { id: string } }>('/admin/coupons/:id/delete', async (req, reply) => {
+    await deleteCoupon(Number(req.params.id))
+    return reply.redirect('/admin/coupons?message=Coupon deleted')
   })
 
   // --- carts (abandoned — added but never ordered) ---
