@@ -129,6 +129,8 @@ export async function grantLoyaltyIfDue(rawPhone: string, name: string | null): 
 // Shape an order for the account view (same as the My-orders tracker).
 export function accountOrder(o: Order) {
   return {
+    id: o.id,
+    token: o.access_token,
     dn: dnCode(o.id),
     status: statusIndex(o.status),
     rawStatus: o.status,

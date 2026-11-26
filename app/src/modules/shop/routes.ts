@@ -416,6 +416,7 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     ])
     return reply.header('Cache-Control', 'no-store').send({
       loggedIn: true,
+      admin: config.adminPhones.has(customer.phone),
       phone: customer.phone,
       name: customer.name,
       orders: orders.map(accountOrder),

@@ -358,8 +358,8 @@ function updateAcctLabel(){const el=document.getElementById('acctLbl');if(el)el.
 async function loadAccount(){
   let r;try{r=await fetch('/shop/api/account').then(x=>x.json())}catch(e){r=null}
   S.auth=r&&r.loggedIn
-    ?{loggedIn:true,phone:r.phone,name:r.name||'',orders:r.orders||[],coupons:r.coupons||[],step:'phone',msg:''}
-    :{loggedIn:false,phone:(S.auth&&S.auth.phone)||'',name:'',orders:[],coupons:[],step:'phone',msg:''};
+    ?{loggedIn:true,admin:!!r.admin,phone:r.phone,name:r.name||'',orders:r.orders||[],coupons:r.coupons||[],step:'phone',msg:''}
+    :{loggedIn:false,admin:false,phone:(S.auth&&S.auth.phone)||'',name:'',orders:[],coupons:[],step:'phone',msg:''};
   updateAcctLabel();
   if(route==='account')render();
 }
@@ -381,6 +381,8 @@ async function verifyCode(){
 async function logoutAcct(){try{await fetch('/shop/api/auth/logout',{method:'POST'})}catch(e){}S.auth={loggedIn:false,phone:'',name:'',orders:[],coupons:[],step:'phone',msg:''};updateAcctLabel();location.hash='shop';}
 function account(){
   const a=S.auth;
+  // Admins skip the customer account page and go straight to the admin panel.
+  if(a.loggedIn&&a.admin){location.href='/admin';return '<div class="narrow view"><p class="muted">Taking you to the admin panel…</p></div>';}
   if(!a.loggedIn){
     return `<div class="narrow view"><div class="stephead"><div class="eyebrow">Account</div><h1>Sign in</h1><p class="muted">Enter your phone and we'll send a login code on WhatsApp.</p></div>
     <div class="box">
@@ -395,7 +397,7 @@ function account(){
   <h2 style="font-size:20px;margin:0 0 10px">Your coupons</h2>
   ${coupons.length?`<div class="two" style="margin-bottom:26px">${coupons.map(c=>`<div class="box" style="margin:0"><b>${esc(c.code)}</b> — ${c.percent}% off<div class="small">Apply it at checkout.</div></div>`).join('')}</div>`:`<p class="muted" style="margin-bottom:26px">No coupons yet — earn one after a few orders.</p>`}
   <h2 style="font-size:20px;margin:0 0 10px">Your orders</h2>
-  ${orders.length?orders.map(o=>`<div class="order"><div class="top"><div><h3>${esc(o.dn)}</h3><div class="small">${new Date(o.at).toLocaleDateString('en-KE',{day:'numeric',month:'short',year:'numeric'})} · ${esc(o.del)}</div></div><div style="text-align:right"><span class="pill ${o.status===3?'g':''}">${STATUSES[o.status]}</span><div style="margin-top:6px;font-weight:500">${ksh(o.total)}</div></div></div></div>`).join(''):`<p class="muted">No orders yet.</p>`}
+  ${orders.length?orders.map(o=>`<a class="order" href="/shop/order/${o.id}/${o.token}" style="display:block;text-decoration:none;color:inherit"><div class="top"><div><h3>${esc(o.dn)}</h3><div class="small">${new Date(o.at).toLocaleDateString('en-KE',{day:'numeric',month:'short',year:'numeric'})} · ${esc(o.del)}</div></div><div style="text-align:right"><span class="pill ${o.status===3?'g':''}">${STATUSES[o.status]}</span><div style="margin-top:6px;font-weight:500">${ksh(o.total)} ›</div></div></div></a>`).join(''):`<p class="muted">No orders yet.</p>`}
   </div>`;
 }
 
