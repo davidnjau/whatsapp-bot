@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { query } from '../db.js'
+import { resizeWebp } from '../lib/images.js'
 import { saveMedia } from '../modules/status/media.js'
 import {
   bannerDTO,
@@ -134,23 +135,26 @@ export const adminCampaignRoutes: FastifyPluginAsync = async (app) => {
   // Change / add the photo (keeps history). Accepts desktop (required) + mobile.
   app.post<{ Params: { id: string } }>('/admin/campaigns/:id/photo', async (req, reply) => {
     const id = Number(req.params.id)
-    let desktopId: number | null = null
-    let mobileId: number | null = null
+    let desktopBuf: Buffer | null = null
+    let mobileBuf: Buffer | null = null
     try {
       for await (const part of req.parts()) {
         if (part.type !== 'file') continue
         const mime = part.mimetype || ''
         const buf = await part.toBuffer()
         if (!ok.test(mime) || buf.length > 5 * 1024 * 1024) continue
-        const media = await saveMedia(part.filename || 'banner', mime, buf)
-        if (part.fieldname === 'desktop') desktopId = media.id
-        else if (part.fieldname === 'mobile') mobileId = media.id
+        if (part.fieldname === 'desktop') desktopBuf = buf
+        else if (part.fieldname === 'mobile') mobileBuf = buf
       }
     } catch {
       /* ignore */
     }
-    if (!desktopId) return reply.redirect(`/admin/campaigns/${id}/edit?message=Add a desktop photo (JPG/PNG/WebP, max 5MB)`)
-    await setCampaignPhoto(id, desktopId, mobileId)
+    if (!desktopBuf) return reply.redirect(`/admin/campaigns/${id}/edit?message=Add a desktop photo (JPG/PNG/WebP, max 5MB)`)
+    // Resize to a desktop (1600px) and mobile (800px) WebP; mobile falls back to
+    // the desktop upload if none was given.
+    const desktop = await saveMedia('banner.webp', 'image/webp', await resizeWebp(desktopBuf, 1600))
+    const mobile = await saveMedia('banner-m.webp', 'image/webp', await resizeWebp(mobileBuf ?? desktopBuf, 800))
+    await setCampaignPhoto(id, desktop.id, mobile.id)
     return reply.redirect(`/admin/campaigns/${id}/edit?message=Photo updated`)
   })
 

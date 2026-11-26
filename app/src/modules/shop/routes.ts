@@ -20,6 +20,7 @@ import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
 import { getValidCoupon } from './coupons.js'
+import { grantStylistAccess, hasStylistAccess, incrementCouponUse, stylistAmount } from './stylist.js'
 import { bannerDTO, getCampaign, isLive, liveCampaign } from './campaigns.js'
 import {
   accountOrder,
@@ -276,7 +277,14 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const product = await getProduct(Number(req.params.id))
     if (!product) return reply.code(404).send({ error: 'not found' })
 
-    // --- payment (simulated) happens here; real STK push slots in ---
+    // Access: logged-in customers are free; anyone else needs a paid/redeemed
+    // access for this dress + kind (a client flag alone is not trusted).
+    const custId = await getCustomerId(req)
+    if (!custId) {
+      const cartId = await getCartId(req)
+      const allowed = cartId ? await hasStylistAccess(cartId, product.id, mode) : false
+      if (!allowed) return reply.send({ error: 'Payment required.', payRequired: true })
+    }
 
     const advice =
       mode === 'fit'
@@ -300,6 +308,41 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
       return reply.send({ sent: true })
     }
     return reply.send({ mode, advice })
+  })
+
+  // --- stylist pay / coupon (logged-in users are free) ---
+  app.post('/api/stylist/coupon', POST_LIMIT, async (req, reply) => {
+    const { code } = z.object({ code: z.string().min(1) }).parse(req.body ?? {})
+    const coupon = await getValidCoupon(code)
+    if (!coupon) return reply.send({ ok: false, error: "That code isn't valid." })
+    const { amount } = await stylistAmount(code)
+    return reply.send({ ok: true, amount })
+  })
+
+  app.post('/api/stylist/pay', POST_LIMIT, async (req, reply) => {
+    const form = z
+      .object({
+        phone: z.string().optional(),
+        dressId: z.coerce.number(),
+        kind: z.enum(['fit', 'style']),
+        coupon: z.string().optional(),
+      })
+      .safeParse(req.body ?? {})
+    if (!form.success) return reply.send({ ok: false, error: 'Invalid request.' })
+    const { phone, dressId, kind, coupon } = form.data
+    const { amount, coupon: validCoupon } = await stylistAmount(coupon)
+    const visitor = await ensureCartId(req, reply)
+    if (amount <= 0) {
+      if (validCoupon) await incrementCouponUse(validCoupon)
+      await grantStylistAccess(visitor, dressId, kind)
+      return reply.send({ ok: true })
+    }
+    // Paid path — validate the Safaricom number; M-Pesa STK is simulated for now.
+    const digits = (phone ?? '').replace(/\D/g, '').replace(/^0/, '254')
+    if (!/^254(7|1)\d{8}$/.test(digits)) return reply.send({ ok: false, error: 'Enter a valid Safaricom number' })
+    if (validCoupon) await incrementCouponUse(validCoupon)
+    await grantStylistAccess(visitor, dressId, kind)
+    return reply.send({ ok: true })
   })
 
   // --- customer accounts (phone + WhatsApp code login) ---
