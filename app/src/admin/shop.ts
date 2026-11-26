@@ -17,7 +17,7 @@ import {
   type CatalogueSince,
   type Product,
 } from '../modules/shop/index.js'
-import { getBool, setSetting } from '../lib/settings.js'
+import { getBool, getSetting, setSetting } from '../lib/settings.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
 import { createCoupon, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
@@ -283,11 +283,29 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // --- coupons ---
   app.get<{ Querystring: { message?: string } }>('/admin/coupons', async (req, reply) => {
+    const [coupons, loyaltyN, loyaltyPercent] = await Promise.all([
+      listCoupons(),
+      getSetting('loyalty_n', '3'),
+      getSetting('loyalty_percent', '10'),
+    ])
     return reply.view('coupons.njk', {
       authed: true,
-      coupons: await listCoupons(),
+      coupons,
+      loyaltyN,
+      loyaltyPercent,
       message: req.query.message ?? null,
     })
+  })
+
+  // Loyalty rule: a coupon after every N paid orders, at a set %.
+  app.post('/admin/loyalty', async (req, reply) => {
+    const form = z
+      .object({ n: z.coerce.number().int().min(1).max(50), percent: z.coerce.number().int().min(1).max(100) })
+      .safeParse(req.body ?? {})
+    if (!form.success) return reply.redirect('/admin/coupons?message=Enter a valid N and percent')
+    await setSetting('loyalty_n', String(form.data.n))
+    await setSetting('loyalty_percent', String(form.data.percent))
+    return reply.redirect('/admin/coupons?message=Loyalty rule saved')
   })
 
   app.post('/admin/coupons', async (req, reply) => {

@@ -16,7 +16,8 @@ const STATUSES=['Order placed','Payment confirmed','Dispatched','Delivered'];
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem('dn_'+k))??d}catch(e){return d}};
 const save=(k,v)=>{try{localStorage.setItem('dn_'+k,JSON.stringify(v))}catch(e){}};
 const S={bag:load('bag',[]),orders:load('orders',[]),sold:load('sold',[]),view:'mq',size:'all',cur:0,
-  gi:0,gfor:0,form:{name:'',phone:'',del:'nairobi',area:'',agree:false,coupon:'',couponPct:0},pay:{mode:'stk',code:'',state:'idle'},admin:{tab:'orders',status:'Order placed'}};
+  gi:0,gfor:0,form:{name:'',phone:'',del:'nairobi',area:'',agree:false,coupon:'',couponPct:0},pay:{mode:'stk',code:'',state:'idle'},admin:{tab:'orders',status:'Order placed'},
+  auth:{loggedIn:false,phone:'',name:'',orders:[],coupons:[],step:'phone',msg:''}};
 const persist=()=>{save('bag',S.bag);save('orders',S.orders);save('sold',S.sold)};
 const isSold=id=>{const d=byId(id);return S.sold.includes(id)||!!(d&&d.sold);};
 const inBag=id=>S.bag.includes(id);
@@ -163,6 +164,7 @@ function totals(){const items=S.bag.map(byId),sub=items.reduce((a,b)=>a+b.price,
 function summaryBox(){const t=totals();return `<div class="summary">${t.items.map(d=>`<div class="row"><span>${esc(d.name)} · size ${d.size}</span><span class="v">${ksh(d.price)}</span></div>`).join('')}${t.discount?`<div class="row" style="color:var(--olive,#5c6534)"><span>Coupon ${esc(S.form.coupon)} (−${S.form.couponPct}%)</span><span class="v">−${ksh(t.discount)}</span></div>`:''}<hr><div class="row muted"><span>${t.del.t}</span><span class="v">${t.del.p?ksh(t.del.p):'Free'}</span></div><div class="row total"><span>Total</span><span class="v">${ksh(t.total)}</span></div></div>`}
 function details(){
   if(!S.bag.length)return emptyView('bag','Nothing to check out yet','Add a dress to your bag first.','#shop','Go to the fitting room');
+  if(S.auth.loggedIn&&!S.form.phone)S.form.phone=S.auth.phone;
   const f=S.form;
   return `<div class="mid view"><div class="stephead"><div class="eyebrow">Step 2 of 3</div><h1>Where should we send it?</h1></div>
   <form id="detailsForm" novalidate>
@@ -335,6 +337,52 @@ function setupGallery(){
 
 function emptyView(i,h,p,href,cta){return `<div class="empty view"><div class="ic">${ic(i)}</div><h3>${h}</h3><p>${p}</p><a class="btn primary" href="${href}">${cta}</a></div>`}
 
+/* ---------- ACCOUNT (phone + WhatsApp code login) ---------- */
+function updateAcctLabel(){const el=document.getElementById('acctLbl');if(el)el.textContent=S.auth.loggedIn?'Account':'Sign in';}
+async function loadAccount(){
+  let r;try{r=await fetch('/shop/api/account').then(x=>x.json())}catch(e){r=null}
+  S.auth=r&&r.loggedIn
+    ?{loggedIn:true,phone:r.phone,name:r.name||'',orders:r.orders||[],coupons:r.coupons||[],step:'phone',msg:''}
+    :{loggedIn:false,phone:(S.auth&&S.auth.phone)||'',name:'',orders:[],coupons:[],step:'phone',msg:''};
+  updateAcctLabel();
+  if(route==='account')render();
+}
+async function requestCode(){
+  const phone=((document.getElementById('authPhone')||{}).value||'').trim();S.auth.phone=phone;
+  if(phone.replace(/\D/g,'').length<9){S.auth.msg='Enter a valid Kenyan number.';render();return}
+  S.auth.msg='Sending…';render();
+  let r;try{r=await fetch('/shop/api/auth/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone})}).then(x=>x.json())}catch(e){r=null}
+  if(r&&r.sent){S.auth.step='code';S.auth.msg='Code sent on WhatsApp — enter it below.';}else{S.auth.msg=(r&&r.error)||'Could not send the code.';}
+  render();
+}
+async function verifyCode(){
+  const phone=S.auth.phone,code=((document.getElementById('authCode')||{}).value||'').trim();
+  if(code.length<4){S.auth.msg='Enter the code we sent.';render();return}
+  S.auth.msg='Verifying…';render();
+  let r;try{r=await fetch('/shop/api/auth/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone,code})}).then(x=>x.json())}catch(e){r=null}
+  if(r&&r.ok){await loadAccount();}else{S.auth.msg=(r&&r.error)||'Wrong or expired code.';render();}
+}
+async function logoutAcct(){try{await fetch('/shop/api/auth/logout',{method:'POST'})}catch(e){}S.auth={loggedIn:false,phone:'',name:'',orders:[],coupons:[],step:'phone',msg:''};updateAcctLabel();location.hash='shop';}
+function account(){
+  const a=S.auth;
+  if(!a.loggedIn){
+    return `<div class="narrow view"><div class="stephead"><div class="eyebrow">Account</div><h1>Sign in</h1><p class="muted">Enter your phone and we'll send a login code on WhatsApp.</p></div>
+    <div class="box">
+      <label class="f" for="authPhone">Phone (WhatsApp)</label><input class="inp" id="authPhone" inputmode="tel" placeholder="07XX XXX XXX" value="${esc(a.phone)}">
+      <button class="btn primary block" data-authreq style="margin-top:12px">${a.step==='code'?'Resend code':'Send code'}</button>
+      ${a.step==='code'?`<label class="f" for="authCode" style="margin-top:16px">Enter the 6-digit code</label><input class="inp" id="authCode" inputmode="numeric" placeholder="123456"><button class="btn primary block" data-authverify style="margin-top:12px">Verify &amp; sign in</button>`:''}
+      ${a.msg?`<div class="small" style="margin-top:10px">${esc(a.msg)}</div>`:''}
+    </div></div>`;
+  }
+  const orders=a.orders||[],coupons=(a.coupons||[]).filter(c=>!c.used);
+  return `<div class="mid view"><div class="stephead"><div class="eyebrow">My account</div><h1>Hi${a.name?' '+esc(a.name):''} 👋</h1><p class="muted">${esc(a.phone)} · <a class="textlink" href="#account" data-logout>Log out</a></p></div>
+  <h2 style="font-size:20px;margin:0 0 10px">Your coupons</h2>
+  ${coupons.length?`<div class="two" style="margin-bottom:26px">${coupons.map(c=>`<div class="box" style="margin:0"><b>${esc(c.code)}</b> — ${c.percent}% off<div class="small">Apply it at checkout.</div></div>`).join('')}</div>`:`<p class="muted" style="margin-bottom:26px">No coupons yet — earn one after a few orders.</p>`}
+  <h2 style="font-size:20px;margin:0 0 10px">Your orders</h2>
+  ${orders.length?orders.map(o=>`<div class="order"><div class="top"><div><h3>${esc(o.dn)}</h3><div class="small">${new Date(o.at).toLocaleDateString('en-KE',{day:'numeric',month:'short',year:'numeric'})} · ${esc(o.del)}</div></div><div style="text-align:right"><span class="pill ${o.status===3?'g':''}">${STATUSES[o.status]}</span><div style="margin-top:6px;font-weight:500">${ksh(o.total)}</div></div></div></div>`).join(''):`<p class="muted">No orders yet.</p>`}
+  </div>`;
+}
+
 const WA=()=>window.DN_WA||'';
 function styChannel(){return (document.querySelector('input[name="styCh"]:checked')||{}).value||'web';}
 // Paid stylist request: pay (simulated) then deliver on web or WhatsApp.
@@ -364,8 +412,8 @@ async function askStylist(id,mode){
 
 /* ---------- router ---------- */
 // Admin lives on the real server-rendered dashboard (/admin), not in the SPA.
-const ROUTES={shop,bag,details,payment,orders};
-const TITLES={shop:'Try on this week\'s dresses',bag:'Your bag',details:'Delivery details',payment:'Payment',orders:'My orders'};
+const ROUTES={shop,bag,details,payment,orders,account};
+const TITLES={shop:'Try on this week\'s dresses',bag:'Your bag',details:'Delivery details',payment:'Payment',orders:'My orders',account:'My account'};
 let route='shop';
 let dressId=0;
 function render(){
@@ -417,6 +465,9 @@ app.addEventListener('click',e=>{
     fetch('/shop/api/cart/remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({productId:pid})}).catch(()=>{});}
   else if(ds.del){S.form.del=ds.del;render()}
   else if(ds.coupon!==undefined){applyCoupon()}
+  else if(ds.authreq!==undefined){requestCode()}
+  else if(ds.authverify!==undefined){verifyCode()}
+  else if(ds.logout!==undefined){e.preventDefault();logoutAcct()}
   else if(ds.pm){S.pay.mode=ds.pm;render()}
   else if(ds.stk!==undefined){S.pay.state='waiting';render();setTimeout(()=>{if(S.pay.state==='waiting'&&route==='payment')placeOrder('stk')},3800)}
   else if(ds.till!==undefined){const c=(document.getElementById('mcode').value||'').trim().toUpperCase();S.pay.code=c;if(!/^[A-Z0-9]{10}$/.test(c)||!/[A-Z]/.test(c)){document.getElementById('codeErr').hidden=false;document.getElementById('mcode').classList.add('bad')}else placeOrder('till')}
@@ -465,5 +516,5 @@ async function loadCatalogue(){
   if(S.cur>=DRESSES.length)S.cur=0;
   persist();
 }
-loadCatalogue().then(()=>{badge();onHash();});
+loadCatalogue().then(()=>{badge();onHash();loadAccount();});
 }

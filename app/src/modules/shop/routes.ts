@@ -20,9 +20,47 @@ import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
 import { getValidCoupon } from './coupons.js'
+import {
+  accountOrder,
+  getCustomer,
+  getCustomerCoupons,
+  getCustomerOrders,
+  grantLoyaltyIfDue,
+  requestLoginCode,
+  verifyLoginCode,
+} from './accounts.js'
 import { fitAdvice, stylingAdvice, type FitAdvice, type StylingAdvice } from './advisor.js'
 
 const CART_COOKIE = 'cart_id'
+const CUST_COOKIE = 'cust'
+
+async function getCustomerId(req: FastifyRequest): Promise<number | null> {
+  const cookie = req.cookies[CUST_COOKIE]
+  if (!cookie) return null
+  const { valid, value } = req.unsignCookie(cookie)
+  if (!valid || !value) return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function setCustomerCookie(reply: FastifyReply, id: number) {
+  reply.setCookie(CUST_COOKIE, String(id), {
+    signed: true,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: 'auto',
+    path: '/',
+    maxAge: 60 * 24 * 3600,
+  })
+}
+
+// Is this request from a logged-in admin (for the shop's admin-only footer)?
+function isAdminReq(req: FastifyRequest): boolean {
+  const cookie = req.cookies['admin_session']
+  if (!cookie) return false
+  const { valid, value } = req.unsignCookie(cookie)
+  return valid && value === 'ok'
+}
 
 async function getCartId(req: FastifyRequest): Promise<string | null> {
   const cookie = req.cookies[CART_COOKIE]
@@ -92,8 +130,12 @@ const POST_LIMIT = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } 
 export const shopRoutes: FastifyPluginAsync = async (app) => {
   // The shop is a single-page app (ported reference design); it loads the
   // catalogue from /shop/api/catalogue and handles its own hash routes.
-  app.get('/shop', async (_req, reply) => {
-    return reply.view('shop_app.njk', { wa: brand.whatsapp, stylistPrice: config.stylistPrice })
+  app.get('/shop', async (req, reply) => {
+    return reply.view('shop_app.njk', {
+      wa: brand.whatsapp,
+      stylistPrice: config.stylistPrice,
+      isAdmin: isAdminReq(req),
+    })
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {
@@ -172,6 +214,8 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     }
     const result = await payOrder(order.id, order.access_token, cartId)
     if (!result.ok) return reply.send({ error: result.reason })
+    // Loyalty: a coupon after every N paid orders (fire-and-forget).
+    grantLoyaltyIfDue(result.order.phone, result.order.customer_name).catch(() => {})
     const items = await orderItems(result.order.id)
     return reply.send({
       order: {
@@ -235,6 +279,43 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
       return reply.send({ sent: true })
     }
     return reply.send({ mode, advice })
+  })
+
+  // --- customer accounts (phone + WhatsApp code login) ---
+  app.post('/shop/api/auth/request', POST_LIMIT, async (req, reply) => {
+    const { phone } = z.object({ phone: z.string().min(6) }).parse(req.body ?? {})
+    const res = await requestLoginCode(phone)
+    return reply.send(res.ok ? { sent: true } : { error: res.error })
+  })
+
+  app.post('/shop/api/auth/verify', POST_LIMIT, async (req, reply) => {
+    const { phone, code } = z.object({ phone: z.string().min(6), code: z.string().min(4) }).parse(req.body ?? {})
+    const customer = await verifyLoginCode(phone, code)
+    if (!customer) return reply.send({ error: 'That code is wrong or expired.' })
+    setCustomerCookie(reply, customer.id)
+    return reply.send({ ok: true, phone: customer.phone, name: customer.name })
+  })
+
+  app.post('/shop/api/auth/logout', async (_req, reply) => {
+    reply.clearCookie(CUST_COOKIE, { path: '/' })
+    return reply.send({ ok: true })
+  })
+
+  app.get('/shop/api/account', async (req, reply) => {
+    const id = await getCustomerId(req)
+    const customer = id ? await getCustomer(id) : null
+    if (!customer) return reply.header('Cache-Control', 'no-store').send({ loggedIn: false })
+    const [orders, coupons] = await Promise.all([
+      getCustomerOrders(customer.phone),
+      getCustomerCoupons(customer.id),
+    ])
+    return reply.header('Cache-Control', 'no-store').send({
+      loggedIn: true,
+      phone: customer.phone,
+      name: customer.name,
+      orders: orders.map(accountOrder),
+      coupons,
+    })
   })
 
   // Validate a coupon code at checkout → { valid, percent } or { valid:false }.
