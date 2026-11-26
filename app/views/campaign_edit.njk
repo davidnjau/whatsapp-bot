@@ -1,107 +1,493 @@
-{% extends "layout.njk" %}
-{% block title %}{{ 'Edit campaign' if campaign else 'New campaign' }} — Dress Nation Admin{% endblock %}
-{% block content %}
-<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-  <div>
-    <p class="e-eyebrow" style="margin:0 0 8px">Campaigns</p>
-    <h1 class="e-h1" style="margin:0">{{ campaign.name if campaign else 'New campaign' }}</h1>
-  </div>
-  <div style="display:flex;gap:8px">
-    <a href="/admin/campaigns" class="e-btn">← Back</a>
-    {% if campaign %}<a href="/admin/campaigns/{{ campaign.id }}/preview" target="_blank" class="e-btn e-btn-dark">Preview</a>{% endif %}
-  </div>
-</div>
-
-{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
-
-<form method="post" action="{{ '/admin/campaigns/' + campaign.id if campaign else '/admin/campaigns' }}" class="e-card" style="display:flex;flex-direction:column;gap:14px">
-  <label style="font-size:13px;color:var(--muted)">Campaign name (internal)
-    <input name="name" required value="{{ campaign.name or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-
-  <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:14px">
-    <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="banner_type" value="text" id="bt_text" {{ 'checked' if not campaign or campaign.banner_type != 'photo' }}> Text banner</label>
-    <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="banner_type" value="photo" id="bt_photo" {{ 'checked' if campaign and campaign.banner_type == 'photo' }}> Photo only</label>
-  </div>
-
-  <div id="textFields" style="display:flex;flex-direction:column;gap:14px">
-    <label style="font-size:13px;color:var(--muted)">Headline<input name="headline" value="{{ campaign.headline or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-    <label style="font-size:13px;color:var(--muted)">Subtext<input name="subtext" value="{{ campaign.subtext or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-    <label style="font-size:13px;color:var(--muted)">Button text<input name="button_text" value="{{ campaign.button_text or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-  </div>
-
-  <label style="font-size:13px;color:var(--muted)">Link (optional — where the button / photo goes)<input name="button_link" value="{{ campaign.button_link or '' }}" placeholder="/shop" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-
-  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-    <label style="font-size:13px;color:var(--muted)">Background<input type="color" name="bg_color" value="{{ campaign.bg_color or '#faf9f5' }}" style="display:block;margin-top:4px;width:60px;height:38px;border:1px solid var(--line);border-radius:8px"></label>
-    <label style="font-size:13px;color:var(--muted)">Text colour<input type="color" name="text_color" value="{{ campaign.text_color or '#2b2724' }}" style="display:block;margin-top:4px;width:60px;height:38px;border:1px solid var(--line);border-radius:8px"></label>
-    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">Photo alt text<input name="photo_alt" value="{{ campaign.photo_alt or '' }}" placeholder="Defaults to the campaign name" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-  </div>
-
-  <div style="display:flex;gap:12px;flex-wrap:wrap">
-    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">Start (Nairobi time)<input type="datetime-local" name="starts" required value="{{ campaign.starts_at | dtlocal }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">End (Nairobi time)<input type="datetime-local" name="ends" required value="{{ campaign.ends_at | dtlocal }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
-  </div>
-
-  <label style="font-size:13px;color:var(--muted)">WhatsApp share message<textarea name="whatsapp_message" rows="2" class="e-input" style="display:block;width:100%;margin-top:4px">{{ campaign.whatsapp_message or '' }}</textarea></label>
-
-  <div style="display:flex;gap:20px;flex-wrap:wrap">
-    <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" name="show_countdown" {{ 'checked' if campaign and campaign.show_countdown }}> Show countdown</label>
-    <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" name="active" {{ 'checked' if not campaign or campaign.active }}> Active</label>
-  </div>
-
-  <div><button class="e-btn e-btn-dark">{{ 'Save changes' if campaign else 'Create campaign' }}</button></div>
-</form>
-
-{% if campaign %}
-<div class="e-card" style="margin-top:20px">
-  <h2 style="margin:0 0 4px;font-size:20px;font-weight:500">Photo</h2>
-  <p class="e-muted" style="font-size:13px;margin:0 0 14px">Recommended: desktop 1600×900, mobile 800×1000. JPG / PNG / WebP, max 5MB. “Change photo” works even on a live campaign.</p>
-  <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
-    <label style="font-size:13px;color:var(--muted)">Desktop photo<input type="file" name="desktop" accept="image/jpeg,image/png,image/webp" required id="dfile" style="display:block;margin-top:4px;font-size:14px"></label>
-    <label style="font-size:13px;color:var(--muted)">Mobile photo (optional)<input type="file" name="mobile" accept="image/jpeg,image/png,image/webp" id="mfile" style="display:block;margin-top:4px;font-size:14px"></label>
-    <button class="e-btn e-btn-olive">Change photo</button>
-    <div id="photoPreview" style="display:flex;gap:10px"></div>
-  </form>
-  <p id="photoWarn" class="e-muted" style="font-size:12px;color:#7a1f2b;margin:8px 0 0"></p>
-
-  {% if photos.length %}
-  <h3 style="font-size:15px;margin:18px 0 10px">Previous photos</h3>
-  <div style="display:flex;gap:10px;flex-wrap:wrap">
-    {% for p in photos %}
-    <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo/{{ p.id }}/restore" style="text-align:center">
-      <img src="/shop/media/{{ p.desktop_media_id }}" style="width:90px;height:64px;object-fit:cover;border-radius:8px;background:var(--panel)" alt="">
-      <button class="e-btn" style="display:block;margin-top:4px;font-size:12px;width:100%">Use this</button>
-    </form>
-    {% endfor %}
-  </div>
-  {% endif %}
-</div>
-{% else %}
-<p class="e-muted" style="margin-top:16px;font-size:14px">Save the campaign first, then add its photo here.</p>
-{% endif %}
-
-<script>
-  (function () {
-    function syncType() {
-      var photo = document.getElementById('bt_photo').checked;
-      document.getElementById('textFields').style.display = photo ? 'none' : 'flex';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ 'Edit campaign' if campaign else 'New campaign' }} — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ivory:oklch(98.5% .006 80);--charcoal:oklch(24% .012 60);--wine:oklch(42% .115 18);
+      --olive:oklch(47% .07 130);--sand:oklch(93.5% .02 75);--stone:oklch(82% .022 70);
+      --background:var(--ivory);--foreground:var(--charcoal);--card:oklch(99.5% .003 80);
+      --accent:oklch(95.5% .015 75);--border:oklch(89% .018 72);--input:oklch(86% .02 72);
+      --muted-foreground:oklch(47% .02 60);--primary:var(--wine);--primary-foreground:var(--ivory);
+      --destructive:oklch(50% .16 30);--status:var(--olive);--status-soft:oklch(93% .035 125);
+      --warn:oklch(55% .12 70);--warn-soft:oklch(95% .04 85);
+      --radius-field:18px;--radius-card:22px;
+      --shadow-soft:0 1px 2px oklch(24% .012 60 / .04),0 8px 24px -12px oklch(24% .012 60 / .18);
+      --ease-soft:cubic-bezier(.22,1,.36,1);
     }
-    document.getElementById('bt_text').addEventListener('change', syncType);
-    document.getElementById('bt_photo').addEventListener('change', syncType);
-    syncType();
-    // Instant preview + small-photo warning
-    function hook(id, recW, recH) {
-      var el = document.getElementById(id); if (!el) return;
-      el.addEventListener('change', function () {
-        var f = el.files[0]; if (!f) return;
-        var pv = document.getElementById('photoPreview'), warn = document.getElementById('photoWarn');
-        var img = new Image(); img.style.cssText = 'width:90px;height:64px;object-fit:cover;border-radius:8px';
-        img.onload = function () { if (img.naturalWidth < recW * 0.6) warn.textContent = 'Heads up: that ' + id.charAt(0) === 'd' ? 'desktop' : 'mobile'; };
-        img.onload = function () { if (img.naturalWidth < recW * 0.6) warn.textContent = 'Heads up: the photo (' + img.naturalWidth + 'px wide) is smaller than recommended (' + recW + 'px).'; };
-        img.src = URL.createObjectURL(f); pv.appendChild(img);
+    *{box-sizing:border-box;margin:0}
+    body{font-family:"Jost",ui-sans-serif,system-ui,sans-serif;background:var(--background);color:var(--foreground);font-size:16px;line-height:1.5;padding-bottom:96px}
+    button,input,textarea{font:inherit;color:inherit}
+    a{color:inherit}
+    svg.icon{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 20px;background:color-mix(in oklch,var(--ivory) 85%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+    .brand{font-weight:500;font-size:18px;text-decoration:none}
+    .brand span{color:var(--muted-foreground);font-weight:300}
+    .topbar nav{display:flex;gap:28px;font-size:15px}
+    .topbar nav a{display:flex;align-items:center;gap:8px;text-decoration:none}
+    .badge-count{background:var(--wine);color:var(--ivory);font-size:11px;border-radius:999px;padding:0 7px;line-height:18px}
+    .page{max-width:1140px;margin:0 auto;padding:48px 20px 0}
+    .back{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--muted-foreground);text-decoration:none}
+    .eyebrow{margin-top:28px;font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500}
+    h1{font-size:36px;font-weight:300;letter-spacing:-.9px;line-height:1.2;margin-top:4px}
+    .pill{display:inline-block;margin-top:10px;padding:2px 10px;border-radius:999px;font-size:13px;background:var(--status-soft);color:var(--status)}
+    .pill.off{background:var(--sand);color:var(--muted-foreground)}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:32px;margin-top:28px;align-items:start}
+    .form-col{display:flex;flex-direction:column;gap:24px}
+    .preview-col{position:sticky;top:88px}
+    .card{background:var(--card);border-radius:var(--radius-card);box-shadow:var(--shadow-soft);padding:20px}
+    .card h2{font-size:18px;font-weight:500}
+    .card .sub{font-size:14px;color:var(--muted-foreground)}
+    .field{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+    .field>label,.label{font-size:14px;font-weight:500}
+    .hint{font-size:12.5px;color:var(--muted-foreground)}
+    .error{font-size:12.5px;color:var(--destructive)}
+    .input,textarea.input{height:48px;padding:0 16px;width:100%;background:var(--card);border:1px solid var(--input);border-radius:var(--radius-field);transition:border-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft)}
+    textarea.input{height:104px;padding:12px 16px;resize:vertical}
+    .input:focus{outline:none;border-color:var(--wine);box-shadow:0 0 0 3px color-mix(in oklch,var(--wine) 15%,transparent)}
+    .segmented{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:24px}
+    .seg-btn{height:48px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--input);border-radius:var(--radius-field);font-size:14px;cursor:pointer;transition:all .2s var(--ease-soft)}
+    .seg-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--wine);font-weight:500}
+    .file-drop{position:relative;display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;cursor:pointer;border:1px dashed var(--input);border-radius:var(--radius-field);color:var(--muted-foreground);font-size:15px;transition:border-color .2s var(--ease-soft),background .2s var(--ease-soft)}
+    .file-drop:hover,.file-drop.dragover{border-color:var(--wine);background:var(--accent)}
+    .file-drop.invalid{border-color:var(--destructive)}
+    .file-drop.ok{border-style:solid;border-color:var(--olive);color:var(--foreground)}
+    .file-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .file-drop .fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .dim-check{display:none;margin-top:8px;padding:10px 12px;border-radius:14px;font-size:13px;gap:10px;align-items:flex-start}
+    .dim-check.show{display:flex}
+    .dim-check.pass{background:var(--status-soft);color:var(--status)}
+    .dim-check.warn{background:var(--warn-soft);color:var(--warn)}
+    .dim-check.fail{background:color-mix(in oklch,var(--destructive) 10%,var(--card));color:var(--destructive)}
+    .dim-check strong{font-weight:600}
+    .dim-check .thumb{width:56px;border-radius:6px;flex:none;object-fit:cover;outline:1px solid var(--border)}
+    .dim-check button{margin-top:6px;background:none;border:1px solid currentColor;border-radius:999px;padding:2px 10px;font-size:12px;cursor:pointer}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:24px;font-size:15px}
+    .switch{position:relative;width:44px;height:24px;flex:none}
+    .switch input{position:absolute;opacity:0;inset:0;cursor:pointer;z-index:1}
+    .switch span{position:absolute;inset:0;background:var(--stone);border-radius:999px;transition:background .25s var(--ease-soft)}
+    .switch span::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transition:transform .25s var(--ease-soft)}
+    .switch input:checked + span{background:var(--wine)}
+    .switch input:checked + span::after{transform:translateX(20px)}
+    .switch input:focus-visible + span{outline:2px solid var(--wine);outline-offset:2px}
+    .preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .preview-head .label{font-size:15px}
+    .device-toggle{display:flex;padding:4px;border:1px solid var(--border);border-radius:999px;background:var(--card)}
+    .device-toggle button{display:flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:0;border-radius:999px;background:transparent;cursor:pointer;font-size:15px}
+    .device-toggle button[aria-pressed="true"]{background:var(--charcoal);color:var(--ivory)}
+    .stage{background:var(--sand);border-radius:26px;padding:16px;display:flex;justify-content:center}
+    .screen{width:100%;background:var(--card);border-radius:16px;overflow:hidden;transition:width .4s var(--ease-soft)}
+    .stage.mobile .screen{width:300px}
+    .hero{position:relative;aspect-ratio:16 / 9;background:var(--accent);display:grid;place-items:center;overflow:hidden;text-decoration:none}
+    .stage.mobile .hero{aspect-ratio:4 / 5}
+    .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .hero .empty{font-size:14px;color:var(--muted-foreground)}
+    .hero .text-banner{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--wine);color:var(--ivory);text-align:center;padding:24px}
+    .hero.is-text .text-banner{display:flex}
+    .hero.is-text .empty,.hero.is-text img{display:none}
+    .text-banner .tb-title{font-size:26px;font-weight:300}
+    .text-banner .tb-btn{border:1px solid var(--ivory);border-radius:999px;padding:6px 18px;font-size:13px}
+    .countdown{position:absolute;top:12px;left:12px;z-index:2;display:flex;align-items:center;gap:6px;background:var(--card);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--charcoal)}
+    .countdown svg{width:13px;height:13px}
+    .safe-area{position:absolute;inset:8%;border:1px dashed oklch(100% 0 0 / .7);border-radius:8px;pointer-events:none;display:none;z-index:1}
+    .hero.show-safe .safe-area{display:block}
+    .skeleton{padding:16px}
+    .skeleton .bar{width:32%;height:12px;border-radius:4px;background:var(--accent)}
+    .skeleton .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .skeleton .grid div{aspect-ratio:4 / 5;border-radius:4px;background:var(--accent)}
+    .stage.mobile .skeleton .grid{grid-template-columns:repeat(2,1fr)}
+    .savebar{position:fixed;inset:auto 0 0 0;z-index:30;height:72px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:color-mix(in oklch,var(--ivory) 92%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--border);transform:translateY(100%);transition:transform .35s var(--ease-soft)}
+    .savebar.visible{transform:translateY(0)}
+    .savebar .status{font-size:15px;color:var(--muted-foreground)}
+    .savebar .actions{display:flex;align-items:center;gap:16px}
+    .btn-ghost{background:none;border:0;font-size:16px;font-weight:500;cursor:pointer;padding:0 8px;text-decoration:none}
+    .btn-primary{height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:500;letter-spacing:.375px;box-shadow:var(--shadow-soft);cursor:pointer;transition:opacity .2s}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+    .toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;background:var(--charcoal);color:var(--ivory);padding:10px 18px;border-radius:999px;font-size:14px;transition:all .3s var(--ease-soft);pointer-events:none;z-index:40}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    [hidden]{display:none !important}
+    @media (max-width:880px){.layout{grid-template-columns:1fr}.preview-col{position:static;order:-1}.topbar nav span.lbl{display:none}}
+    @media (max-width:480px){h1{font-size:30px}.row-2{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6V4h16v2M12 4v16M9 20h6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 7h12l1 14H5zM9 7a3 3 0 0 1 6 0"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+    <nav>
+      <a href="/admin/orders"><svg class="icon"><use href="#i-box"/></svg><span class="lbl">Orders</span></a>
+      <a href="/shop" target="_blank"><svg class="icon"><use href="#i-bag"/></svg><span class="lbl">View shop</span></a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <a class="back" href="/admin/campaigns"><svg class="icon"><use href="#i-back"/></svg>Admin</a>
+    <p class="eyebrow">Campaign</p>
+    <h1 id="title">{{ campaign.name if campaign else 'New campaign' }}</h1>
+    <span class="pill" id="statusPill">Off</span>
+
+    <div class="layout">
+      <!-- ============ FORM ============ -->
+      <form class="form-col" id="campaignForm" method="post"
+            action="{{ '/admin/campaigns/' + campaign.id if campaign else '/admin/campaigns' }}" novalidate>
+        {# preserve fields the editorial UI doesn't surface, so a save never loses them #}
+        <input type="hidden" name="banner_type" id="bannerType" value="{{ campaign.banner_type if campaign else 'text' }}">
+        <input type="hidden" name="subtext" value="{{ campaign.subtext or '' }}">
+        <input type="hidden" name="bg_color" value="{{ campaign.bg_color or '#faf9f5' }}">
+        <input type="hidden" name="text_color" value="{{ campaign.text_color or '#2b2724' }}">
+
+        <!-- Basics -->
+        <section class="card">
+          <h2>Basics</h2>
+          <div class="field">
+            <label for="name">Campaign name (internal)</label>
+            <input class="input" id="name" name="name" value="{{ campaign.name or '' }}" required />
+          </div>
+
+          <div class="segmented" role="group" aria-label="Banner type">
+            <button type="button" class="seg-btn" data-type="text" aria-pressed="{{ 'false' if campaign and campaign.banner_type == 'photo' else 'true' }}">
+              <svg class="icon"><use href="#i-text"/></svg>Text banner
+            </button>
+            <button type="button" class="seg-btn" data-type="photo" aria-pressed="{{ 'true' if campaign and campaign.banner_type == 'photo' else 'false' }}">
+              <svg class="icon"><use href="#i-image"/></svg>Photo only
+            </button>
+          </div>
+
+          <div class="field" id="textFields">
+            <label for="headline">Headline</label>
+            <input class="input" id="headline" name="headline" value="{{ campaign.headline or '' }}" placeholder="Up to 40% off this weekend" />
+            <label for="cta" style="margin-top:10px">Button text</label>
+            <input class="input" id="cta" name="button_text" value="{{ campaign.button_text or '' }}" placeholder="Shop now" />
+          </div>
+
+          <div class="field">
+            <label for="link">Link</label>
+            <input class="input" id="link" name="button_link" value="{{ campaign.button_link or '' }}" placeholder="/shop" />
+            <span class="hint">Where the button or photo goes (optional)</span>
+          </div>
+        </section>
+
+        <!-- Schedule -->
+        <section class="card">
+          <h2>Schedule</h2>
+          <p class="sub">Nairobi time</p>
+          <div class="row-2">
+            <div class="field">
+              <label for="starts">Starts</label>
+              <input class="input" type="datetime-local" id="starts" name="starts" value="{{ campaign.starts_at | dtlocal }}" required />
+            </div>
+            <div class="field">
+              <label for="ends">Ends</label>
+              <input class="input" type="datetime-local" id="ends" name="ends" value="{{ campaign.ends_at | dtlocal }}" required />
+            </div>
+          </div>
+          <span class="error" id="scheduleError" hidden>End must be after start</span>
+
+          <div class="toggle-row">
+            <label for="showCountdown">Show countdown on banner</label>
+            <span class="switch"><input type="checkbox" role="switch" name="show_countdown" id="showCountdown" {{ 'checked' if campaign and campaign.show_countdown }} /><span></span></span>
+          </div>
+          <div class="toggle-row">
+            <label for="enabled">Campaign switched on</label>
+            <span class="switch"><input type="checkbox" role="switch" name="active" id="enabled" {{ 'checked' if not campaign or campaign.active }} /><span></span></span>
+          </div>
+        </section>
+
+        <!-- WhatsApp -->
+        <section class="card">
+          <h2>WhatsApp share</h2>
+          <div class="field">
+            <textarea class="input" id="whatsapp" name="whatsapp_message" aria-label="WhatsApp share message"
+              placeholder="Message customers see when they share this offer">{{ campaign.whatsapp_message or '' }}</textarea>
+          </div>
+        </section>
+      </form>
+
+      <!-- ============ PREVIEW ============ -->
+      <aside class="preview-col" aria-label="Live preview">
+        <div class="preview-head">
+          <span class="label">Live preview</span>
+          <div class="device-toggle" role="group" aria-label="Preview device">
+            <button type="button" data-device="desktop" aria-pressed="true"><svg class="icon"><use href="#i-monitor"/></svg>Desktop</button>
+            <button type="button" data-device="mobile" aria-pressed="false"><svg class="icon"><use href="#i-phone"/></svg>Mobile</button>
+          </div>
+        </div>
+
+        <div class="stage" id="stage">
+          <div class="screen">
+            <a class="hero" id="hero">
+              <span class="countdown" id="countdown"><svg class="icon"><use href="#i-clock"/></svg><span>—</span></span>
+              <span class="safe-area" aria-hidden="true"></span>
+              <img id="heroImg" alt="" {% if campaign and campaign.desktop_media_id %}src="/shop/media/{{ campaign.desktop_media_id }}"{% else %}hidden{% endif %} />
+              <span class="empty" id="heroEmpty" {% if campaign and campaign.desktop_media_id %}hidden{% endif %}>Add a photo to preview</span>
+              <div class="text-banner">
+                <span class="tb-title" id="tbTitle">Your headline</span>
+                <span class="tb-btn" id="tbBtn">Shop now</span>
+              </div>
+            </a>
+            <div class="skeleton" aria-hidden="true">
+              <div class="bar"></div>
+              <div class="grid"><div></div><div></div><div></div></div>
+            </div>
+          </div>
+        </div>
+
+        {% if campaign %}
+        <!-- Photo card (separate multipart endpoint; saves on its own) -->
+        <section class="card" id="photoCard" style="margin-top:24px">
+          <h2>Photo</h2>
+          <p class="sub">Desktop 1600×900, mobile 800×1000. JPG, PNG or WebP, max 5MB. Saves separately from the fields above.</p>
+          <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo" enctype="multipart/form-data" id="photoForm">
+            <div class="field">
+              <span class="label">Desktop photo</span>
+              <label class="file-drop" data-slot="desktop">
+                <span class="fname">{{ 'Change photo' if campaign.desktop_media_id else 'Choose a photo' }}</span>
+                <svg class="icon"><use href="#i-image"/></svg>
+                <input type="file" name="desktop" accept="image/jpeg,image/png,image/webp" aria-label="Desktop photo" {{ 'required' if not campaign.desktop_media_id }} />
+              </label>
+              <div class="dim-check" data-check="desktop" role="status" aria-live="polite"></div>
+              <span class="error" data-error="desktop" hidden>Add a desktop photo</span>
+            </div>
+            <div class="field">
+              <span class="label">Mobile photo (optional)</span>
+              <label class="file-drop" data-slot="mobile">
+                <span class="fname">{{ 'Change photo' if campaign.mobile_media_id else 'Choose a photo' }}</span>
+                <svg class="icon"><use href="#i-image"/></svg>
+                <input type="file" name="mobile" accept="image/jpeg,image/png,image/webp" aria-label="Mobile photo" />
+              </label>
+              <div class="dim-check" data-check="mobile" role="status" aria-live="polite"></div>
+            </div>
+            <div class="field">
+              <label for="alt">Photo description</label>
+              <input class="input" id="alt" name="photo_alt" value="{{ campaign.photo_alt or '' }}" placeholder="{{ campaign.name }}" />
+              <span class="hint">Read aloud to screen readers. Defaults to the campaign name.</span>
+            </div>
+            <div style="margin-top:16px"><button type="submit" class="btn-primary" id="photoSave">Save photo</button></div>
+          </form>
+          {% if photos.length %}
+          <h3 style="font-size:15px;margin:20px 0 10px;font-weight:500">Previous photos</h3>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            {% for p in photos %}
+            <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo/{{ p.id }}/restore" style="text-align:center">
+              <img src="/shop/media/{{ p.desktop_media_id }}" style="width:90px;height:64px;object-fit:cover;border-radius:10px;background:var(--sand)" alt="">
+              <button class="btn-ghost" style="display:block;margin:4px auto 0;font-size:12px">Use this</button>
+            </form>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </section>
+        {% else %}
+        <p class="hint" style="margin-top:16px">Save the campaign first, then add its photo here.</p>
+        {% endif %}
+      </aside>
+    </div>
+  </main>
+
+  <div class="savebar" id="savebar">
+    <span class="status" id="saveStatus">{{ message or 'Unsaved changes' }}</span>
+    <div class="actions">
+      <a class="btn-ghost" id="discardBtn" href="{{ ('/admin/campaigns/' + campaign.id + '/edit') if campaign else '/admin/campaigns' }}">Discard</a>
+      <button type="button" class="btn-primary" id="saveBtn">{{ 'Save campaign' if campaign else 'Create campaign' }}</button>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status">{% if message %}{{ message }}{% endif %}</div>
+
+  <script>
+  (() => {
+    "use strict";
+    const SPECS = { desktop: { w: 1600, h: 900, label: "Desktop" }, mobile: { w: 800, h: 1000, label: "Mobile" } };
+    const MAX_BYTES = 5 * 1024 * 1024;
+    const TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const RATIO_TOLERANCE = 0.02;
+    const NAIROBI_OFFSET = "+03:00";
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+    const hasExistingPhoto = {{ 'true' if campaign and campaign.desktop_media_id else 'false' }};
+
+    const state = {
+      type: "{{ campaign.banner_type if campaign else 'text' }}",
+      device: "desktop",
+      photos: { desktop: null, mobile: null },
+      dirty: false,
+    };
+
+    async function readImageSize(file) {
+      if ("createImageBitmap" in window) {
+        try { const b = await createImageBitmap(file, { imageOrientation: "from-image" }); const s = { width: b.width, height: b.height }; b.close(); return s; } catch (_) {}
+      }
+      return new Promise((res, rej) => {
+        const url = URL.createObjectURL(file); const img = new Image();
+        img.onload = () => { res({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+        img.onerror = () => { rej(new Error("Could not read this image")); URL.revokeObjectURL(url); };
+        img.src = url;
       });
     }
-    hook('dfile', 1600, 900); hook('mfile', 800, 1000);
+    function simplify(a, b) { const g = (x, y) => (y ? g(y, x % y) : x); const d = g(a, b); return `${a / d}:${b / d}`; }
+    function measure({ width, height }, spec, file) {
+      const issues = [];
+      if (!TYPES.includes(file.type)) issues.push({ level: "fail", msg: "Use a JPG, PNG or WebP file." });
+      if (file.size > MAX_BYTES) issues.push({ level: "fail", msg: `File is ${(file.size / 1048576).toFixed(1)}MB — max is 5MB.` });
+      const target = spec.w / spec.h, actual = width / height, ratioOff = Math.abs(actual - target) / target;
+      if (width === spec.w && height === spec.h) return { level: issues.length ? "fail" : "pass", issues, ratioOff, exact: true };
+      if (width < spec.w || height < spec.h) issues.push({ level: "fail", msg: `Too small: ${width}×${height}. Needs at least ${spec.w}×${spec.h} or it will look blurry.` });
+      if (ratioOff > RATIO_TOLERANCE) { const shape = actual > target ? "wider" : "taller"; issues.push({ level: "warn", msg: `Shape is ${shape} than ${simplify(spec.w, spec.h)} — edges will be cropped.` }); }
+      else if (width > spec.w) issues.push({ level: "warn", msg: `Larger than needed (${width}×${height}). It'll be resized to ${spec.w}×${spec.h}.` });
+      const level = issues.some(i => i.level === "fail") ? "fail" : issues.length ? "warn" : "pass";
+      return { level, issues, ratioOff, exact: false };
+    }
+    async function cropToSpec(file, spec) {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const target = spec.w / spec.h; let sw = bmp.width, sh = bmp.height;
+      if (sw / sh > target) sw = Math.round(sh * target); else sh = Math.round(sw / target);
+      const sx = Math.round((bmp.width - sw) / 2), sy = Math.round((bmp.height - sh) / 2);
+      const canvas = document.createElement("canvas"); canvas.width = spec.w; canvas.height = spec.h;
+      const ctx = canvas.getContext("2d"); ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, spec.w, spec.h); bmp.close();
+      const blob = await new Promise(r => canvas.toBlob(r, "image/webp", 0.88));
+      return new File([blob], file.name.replace(/\.\w+$/, "") + `-${spec.w}x${spec.h}.webp`, { type: "image/webp" });
+    }
+    // Put a (possibly cropped) File back into the real file input so it submits.
+    function setInputFile(slot, file) {
+      const input = $(`.file-drop[data-slot="${slot}"] input`);
+      try { const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; } catch (_) {}
+    }
+
+    async function handleFile(slot, file, fromCrop) {
+      const spec = SPECS[slot], drop = $(`.file-drop[data-slot="${slot}"]`), box = $(`.dim-check[data-check="${slot}"]`);
+      if (!file) return;
+      if (fromCrop) setInputFile(slot, file);
+      let size;
+      try { size = await readImageSize(file); } catch (e) { showCheck(box, "fail", [e.message]); drop.classList.add("invalid"); return; }
+      const verdict = measure(size, spec, file);
+      const old = state.photos[slot]; if (old?.url) URL.revokeObjectURL(old.url);
+      const url = URL.createObjectURL(file);
+      state.photos[slot] = { file, url, ...size, verdict };
+      drop.querySelector(".fname").textContent = `${file.name} · ${size.width}×${size.height}`;
+      drop.classList.toggle("invalid", verdict.level === "fail");
+      drop.classList.toggle("ok", verdict.level !== "fail");
+      const lines = verdict.level === "pass"
+        ? [`<strong>Perfect fit</strong> — ${size.width}×${size.height} matches ${spec.label} ${spec.w}×${spec.h}.`]
+        : [`<strong>${size.width}×${size.height}</strong> vs required ${spec.w}×${spec.h}`, ...verdict.issues.map(i => i.msg)];
+      const canFix = verdict.level !== "pass" && TYPES.includes(file.type) && size.width >= spec.w * 0.5 && size.height >= spec.h * 0.5;
+      showCheck(box, verdict.level, lines, url, canFix ? async () => { const fixed = await cropToSpec(file, spec); handleFile(slot, fixed, true); toast(`Cropped to ${spec.w}×${spec.h}`); } : null);
+      if (slot === "desktop") $('[data-error="desktop"]').hidden = verdict.level !== "fail";
+      $("#hero").classList.toggle("show-safe", verdict.level === "warn");
+      markDirty(); validatePhoto(); renderPreview();
+    }
+    function showCheck(box, level, lines, thumb, onFix) {
+      box.className = `dim-check show ${level}`;
+      box.innerHTML = `${thumb ? `<img class="thumb" src="${thumb}" alt="">` : ""}<div>${lines.map(l => `<div>${l}</div>`).join("")}${onFix ? `<button type="button">Crop to fit automatically</button>` : ""}</div>`;
+      if (onFix) box.querySelector("button").addEventListener("click", onFix, { once: true });
+    }
+
+    $$(".file-drop").forEach(drop => {
+      const slot = drop.dataset.slot, input = drop.querySelector("input");
+      input.addEventListener("change", () => handleFile(slot, input.files[0]));
+      ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("dragover"); }));
+      ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("dragover"); }));
+      drop.addEventListener("drop", e => handleFile(slot, e.dataTransfer.files[0]));
+    });
+
+    // Banner type toggle
+    $$(".seg-btn").forEach(btn => btn.addEventListener("click", () => {
+      state.type = btn.dataset.type;
+      $("#bannerType").value = state.type;
+      $$(".seg-btn").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      $("#textFields").hidden = state.type !== "text";
+      markDirty(); renderPreview();
+    }));
+
+    // Device toggle
+    $$(".device-toggle button").forEach(btn => btn.addEventListener("click", () => {
+      state.device = btn.dataset.device;
+      $$(".device-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      $("#stage").classList.toggle("mobile", state.device === "mobile");
+      renderPreview();
+    }));
+
+    function renderPreview() {
+      const hero = $("#hero"), img = $("#heroImg"), empty = $("#heroEmpty");
+      hero.classList.toggle("is-text", state.type === "text");
+      hero.href = $("#link").value || "#";
+      $("#tbTitle").textContent = $("#headline").value || "Your headline";
+      $("#tbBtn").textContent = $("#cta").value || "Shop now";
+      const picked = state.device === "mobile" ? (state.photos.mobile || state.photos.desktop) : state.photos.desktop;
+      if (picked) { img.src = picked.url; img.alt = ($("#alt") ? $("#alt").value : "") || $("#name").value; img.hidden = false; empty.hidden = true; }
+      else if (hasExistingPhoto) { img.hidden = false; empty.hidden = true; }
+      else { img.hidden = true; empty.hidden = false; }
+      $("#countdown").hidden = !$("#showCountdown").checked;
+      $("#title").textContent = $("#name").value || "Untitled campaign";
+      updateStatusPill();
+    }
+
+    const fromNairobi = v => (v ? new Date(`${v}:00${NAIROBI_OFFSET}`) : null);
+    const toLocalInput = d => new Date(d.getTime() + 3 * 3600e3).toISOString().slice(0, 16);
+    if (!$("#starts").value) { const n = new Date(); $("#starts").value = toLocalInput(n); $("#ends").value = toLocalInput(new Date(n.getTime() + 24 * 3600e3)); }
+
+    function tick() {
+      const end = fromNairobi($("#ends").value), span = $("#countdown span");
+      if (!end) { span.textContent = "—"; return; }
+      let s = Math.max(0, Math.floor((end - Date.now()) / 1000));
+      const d = Math.floor(s / 86400); s %= 86400; const h = Math.floor(s / 3600); s %= 3600; const m = Math.floor(s / 60); s %= 60;
+      span.textContent = (d ? `${d}d ` : "") + `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s left`;
+    }
+    setInterval(tick, 1000); tick();
+
+    function updateStatusPill() {
+      const pill = $("#statusPill"), start = fromNairobi($("#starts").value), end = fromNairobi($("#ends").value), t = Date.now(), on = $("#enabled").checked;
+      let text = "Off";
+      if (on && start && end) text = t < start ? "Scheduled" : t > end ? "Ended" : "Live now";
+      pill.textContent = text; pill.classList.toggle("off", text !== "Live now");
+      $("#scheduleError").hidden = !(start && end && end <= start);
+    }
+
+    const savebar = $("#savebar");
+    function markDirty() { state.dirty = true; $("#saveStatus").textContent = "Unsaved changes"; validate(); }
+    function validate() {
+      const start = fromNairobi($("#starts").value), end = fromNairobi($("#ends").value);
+      const ok = $("#name").value.trim() && (!start || !end || end > start);
+      $("#saveBtn").disabled = !ok;
+      return !!ok;
+    }
+    function validatePhoto() {
+      const btn = $("#photoSave"); if (!btn) return;
+      const d = state.photos.desktop, m = state.photos.mobile;
+      const bad = (d && d.verdict.level === "fail") || (m && m.verdict.level === "fail");
+      btn.disabled = bad;
+    }
+
+    $("#campaignForm").addEventListener("input", () => { markDirty(); renderPreview(); });
+    $("#campaignForm").addEventListener("change", () => { markDirty(); renderPreview(); });
+
+    $("#saveBtn").addEventListener("click", () => { if (!validate()) return; state.dirty = false; $("#saveStatus").textContent = "Saving…"; $("#campaignForm").submit(); });
+    $("#discardBtn").addEventListener("click", () => { state.dirty = false; });
+    const pf = $("#photoForm"); if (pf) pf.addEventListener("submit", () => { state.dirty = false; });
+
+    window.addEventListener("beforeunload", e => { if (state.dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+    function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200); }
+
+    renderPreview(); validate(); validatePhoto();
+    savebar.classList.add("visible");
+    (function(){ const t = $("#toast"); const msg = (t.textContent || "").trim(); if (msg) { t.classList.add("show"); $("#saveStatus").textContent = "Saved"; clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600); } })();
   })();
-</script>
-{% endblock %}
+  </script>
+</body>
+</html>
+{# standalone page — intentionally does not extend layout.njk (own top bar + save bar per spec) #}

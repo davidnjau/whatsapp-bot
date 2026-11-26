@@ -9,10 +9,9 @@
     .then(function (c) {
       if (!c || !c.id) return
       if (new Date(c.endsAt).getTime() <= Date.now()) return
+      // Show on every landing-page load while the campaign is live; closing only
+      // dismisses it for this page view (it returns on the next reload).
       var forced = forcedPromo && String(c.id) === String(forcedPromo)
-      try {
-        if (!forced && localStorage.getItem('dn_promo_dismissed') === String(c.id)) return
-      } catch (e) {}
       showBanner(c, forced)
     })
     .catch(function () {})
@@ -66,7 +65,6 @@
     document.body.style.overflow = 'hidden'
 
     function close() {
-      try { if (!forced) localStorage.setItem('dn_promo_dismissed', String(c.id)) } catch (e) {}
       document.body.style.overflow = ''
       back.remove()
       document.removeEventListener('keydown', onKey)
