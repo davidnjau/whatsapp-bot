@@ -17,6 +17,7 @@ import { adminNotifyRoutes } from './admin/notify.js'
 import { adminGroupRoutes } from './admin/groups.js'
 import { adminStatusRoutes } from './admin/status.js'
 import { adminShopRoutes } from './admin/shop.js'
+import { adminCampaignRoutes } from './admin/campaigns.js'
 import { shopRoutes } from './modules/shop/routes.js'
 import { notifyRoutes } from './modules/notify/routes.js'
 
@@ -45,6 +46,19 @@ export function buildApp() {
             ? String(v)
             : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
         })
+        // Stored UTC → an Africa/Nairobi value for <input type="datetime-local">.
+        env.addFilter('dtlocal', (v) => {
+          if (!v) return ''
+          const d = new Date(v as string)
+          if (isNaN(d.getTime())) return ''
+          const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Africa/Nairobi',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          }).formatToParts(d)
+          const g = (t: string) => parts.find((x) => x.type === t)?.value ?? '00'
+          return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`
+        })
       },
     },
   })
@@ -56,6 +70,7 @@ export function buildApp() {
   app.register(adminGroupRoutes)
   app.register(adminStatusRoutes)
   app.register(adminShopRoutes)
+  app.register(adminCampaignRoutes)
   app.register(shopRoutes)
   app.register(notifyRoutes)
 
@@ -71,7 +86,6 @@ export function buildApp() {
     return { status: 'ok', waha: wahaStatus }
   })
 
-  app.get('/', async (_req, reply) => reply.redirect('/admin'))
-
+  // '/' is served by the shop routes (public storefront); /admin is the dashboard.
   return app
 }

@@ -2,6 +2,7 @@ import { query } from '../../db.js'
 import { enqueueSend } from '../../queue/index.js'
 import { normalizePhone, toChatId } from '../../lib/phone.js'
 import { getSetting } from '../../lib/settings.js'
+import { defaultCouponExpiry } from './coupons.js'
 import { dnCode, statusIndex, type Order } from './orders.js'
 
 export interface Customer {
@@ -103,8 +104,8 @@ export async function grantLoyaltyIfDue(rawPhone: string, name: string | null): 
     haveN++
     const code = 'DNL-' + Math.random().toString(36).slice(2, 8).toUpperCase()
     const ins = await query<{ id: number }>(
-      'INSERT INTO coupons (code, percent, max_uses) VALUES ($1, $2, 1) RETURNING id',
-      [code, pct],
+      'INSERT INTO coupons (code, percent, max_uses, expires_at) VALUES ($1, $2, 1, $3) RETURNING id',
+      [code, pct, await defaultCouponExpiry()],
     )
     await query(
       'INSERT INTO customer_coupons (customer_id, coupon_id, milestone) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',

@@ -1,0 +1,107 @@
+{% extends "layout.njk" %}
+{% block title %}{{ 'Edit campaign' if campaign else 'New campaign' }} — Dress Nation Admin{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Campaigns</p>
+    <h1 class="e-h1" style="margin:0">{{ campaign.name if campaign else 'New campaign' }}</h1>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/admin/campaigns" class="e-btn">← Back</a>
+    {% if campaign %}<a href="/admin/campaigns/{{ campaign.id }}/preview" target="_blank" class="e-btn e-btn-dark">Preview</a>{% endif %}
+  </div>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+<form method="post" action="{{ '/admin/campaigns/' + campaign.id if campaign else '/admin/campaigns' }}" class="e-card" style="display:flex;flex-direction:column;gap:14px">
+  <label style="font-size:13px;color:var(--muted)">Campaign name (internal)
+    <input name="name" required value="{{ campaign.name or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:14px">
+    <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="banner_type" value="text" id="bt_text" {{ 'checked' if not campaign or campaign.banner_type != 'photo' }}> Text banner</label>
+    <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="banner_type" value="photo" id="bt_photo" {{ 'checked' if campaign and campaign.banner_type == 'photo' }}> Photo only</label>
+  </div>
+
+  <div id="textFields" style="display:flex;flex-direction:column;gap:14px">
+    <label style="font-size:13px;color:var(--muted)">Headline<input name="headline" value="{{ campaign.headline or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+    <label style="font-size:13px;color:var(--muted)">Subtext<input name="subtext" value="{{ campaign.subtext or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+    <label style="font-size:13px;color:var(--muted)">Button text<input name="button_text" value="{{ campaign.button_text or '' }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+  </div>
+
+  <label style="font-size:13px;color:var(--muted)">Link (optional — where the button / photo goes)<input name="button_link" value="{{ campaign.button_link or '' }}" placeholder="/shop" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <label style="font-size:13px;color:var(--muted)">Background<input type="color" name="bg_color" value="{{ campaign.bg_color or '#faf9f5' }}" style="display:block;margin-top:4px;width:60px;height:38px;border:1px solid var(--line);border-radius:8px"></label>
+    <label style="font-size:13px;color:var(--muted)">Text colour<input type="color" name="text_color" value="{{ campaign.text_color or '#2b2724' }}" style="display:block;margin-top:4px;width:60px;height:38px;border:1px solid var(--line);border-radius:8px"></label>
+    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">Photo alt text<input name="photo_alt" value="{{ campaign.photo_alt or '' }}" placeholder="Defaults to the campaign name" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">Start (Nairobi time)<input type="datetime-local" name="starts" required value="{{ campaign.starts_at | dtlocal }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+    <label style="flex:1 1 200px;font-size:13px;color:var(--muted)">End (Nairobi time)<input type="datetime-local" name="ends" required value="{{ campaign.ends_at | dtlocal }}" class="e-input" style="display:block;width:100%;margin-top:4px"></label>
+  </div>
+
+  <label style="font-size:13px;color:var(--muted)">WhatsApp share message<textarea name="whatsapp_message" rows="2" class="e-input" style="display:block;width:100%;margin-top:4px">{{ campaign.whatsapp_message or '' }}</textarea></label>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" name="show_countdown" {{ 'checked' if campaign and campaign.show_countdown }}> Show countdown</label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" name="active" {{ 'checked' if not campaign or campaign.active }}> Active</label>
+  </div>
+
+  <div><button class="e-btn e-btn-dark">{{ 'Save changes' if campaign else 'Create campaign' }}</button></div>
+</form>
+
+{% if campaign %}
+<div class="e-card" style="margin-top:20px">
+  <h2 style="margin:0 0 4px;font-size:20px;font-weight:500">Photo</h2>
+  <p class="e-muted" style="font-size:13px;margin:0 0 14px">Recommended: desktop 1600×900, mobile 800×1000. JPG / PNG / WebP, max 5MB. “Change photo” works even on a live campaign.</p>
+  <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
+    <label style="font-size:13px;color:var(--muted)">Desktop photo<input type="file" name="desktop" accept="image/jpeg,image/png,image/webp" required id="dfile" style="display:block;margin-top:4px;font-size:14px"></label>
+    <label style="font-size:13px;color:var(--muted)">Mobile photo (optional)<input type="file" name="mobile" accept="image/jpeg,image/png,image/webp" id="mfile" style="display:block;margin-top:4px;font-size:14px"></label>
+    <button class="e-btn e-btn-olive">Change photo</button>
+    <div id="photoPreview" style="display:flex;gap:10px"></div>
+  </form>
+  <p id="photoWarn" class="e-muted" style="font-size:12px;color:#7a1f2b;margin:8px 0 0"></p>
+
+  {% if photos.length %}
+  <h3 style="font-size:15px;margin:18px 0 10px">Previous photos</h3>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    {% for p in photos %}
+    <form method="post" action="/admin/campaigns/{{ campaign.id }}/photo/{{ p.id }}/restore" style="text-align:center">
+      <img src="/shop/media/{{ p.desktop_media_id }}" style="width:90px;height:64px;object-fit:cover;border-radius:8px;background:var(--panel)" alt="">
+      <button class="e-btn" style="display:block;margin-top:4px;font-size:12px;width:100%">Use this</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<p class="e-muted" style="margin-top:16px;font-size:14px">Save the campaign first, then add its photo here.</p>
+{% endif %}
+
+<script>
+  (function () {
+    function syncType() {
+      var photo = document.getElementById('bt_photo').checked;
+      document.getElementById('textFields').style.display = photo ? 'none' : 'flex';
+    }
+    document.getElementById('bt_text').addEventListener('change', syncType);
+    document.getElementById('bt_photo').addEventListener('change', syncType);
+    syncType();
+    // Instant preview + small-photo warning
+    function hook(id, recW, recH) {
+      var el = document.getElementById(id); if (!el) return;
+      el.addEventListener('change', function () {
+        var f = el.files[0]; if (!f) return;
+        var pv = document.getElementById('photoPreview'), warn = document.getElementById('photoWarn');
+        var img = new Image(); img.style.cssText = 'width:90px;height:64px;object-fit:cover;border-radius:8px';
+        img.onload = function () { if (img.naturalWidth < recW * 0.6) warn.textContent = 'Heads up: that ' + id.charAt(0) === 'd' ? 'desktop' : 'mobile'; };
+        img.onload = function () { if (img.naturalWidth < recW * 0.6) warn.textContent = 'Heads up: the photo (' + img.naturalWidth + 'px wide) is smaller than recommended (' + recW + 'px).'; };
+        img.src = URL.createObjectURL(f); pv.appendChild(img);
+      });
+    }
+    hook('dfile', 1600, 900); hook('mfile', 800, 1000);
+  })();
+</script>
+{% endblock %}

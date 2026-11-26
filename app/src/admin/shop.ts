@@ -20,7 +20,7 @@ import {
 import { getBool, getSetting, setSetting } from '../lib/settings.js'
 import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
-import { createCoupon, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
+import { createCoupon, defaultCouponExpiry, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
 import { saveMedia } from '../modules/status/media.js'
 import { ingestConfigured } from '../modules/shop/runpod.js'
 import { enqueueIngest } from '../queue/index.js'
@@ -283,29 +283,36 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // --- coupons ---
   app.get<{ Querystring: { message?: string } }>('/admin/coupons', async (req, reply) => {
-    const [coupons, loyaltyN, loyaltyPercent] = await Promise.all([
+    const [coupons, loyaltyN, loyaltyPercent, couponDays] = await Promise.all([
       listCoupons(),
       getSetting('loyalty_n', '3'),
       getSetting('loyalty_percent', '10'),
+      getSetting('coupon_default_days', '7'),
     ])
     return reply.view('coupons.njk', {
       authed: true,
       coupons,
       loyaltyN,
       loyaltyPercent,
+      couponDays,
       message: req.query.message ?? null,
     })
   })
 
-  // Loyalty rule: a coupon after every N paid orders, at a set %.
+  // Loyalty rule + default coupon lifetime.
   app.post('/admin/loyalty', async (req, reply) => {
     const form = z
-      .object({ n: z.coerce.number().int().min(1).max(50), percent: z.coerce.number().int().min(1).max(100) })
+      .object({
+        n: z.coerce.number().int().min(1).max(50),
+        percent: z.coerce.number().int().min(1).max(100),
+        couponDays: z.coerce.number().int().min(1).max(365),
+      })
       .safeParse(req.body ?? {})
-    if (!form.success) return reply.redirect('/admin/coupons?message=Enter a valid N and percent')
+    if (!form.success) return reply.redirect('/admin/coupons?message=Enter valid values')
     await setSetting('loyalty_n', String(form.data.n))
     await setSetting('loyalty_percent', String(form.data.percent))
-    return reply.redirect('/admin/coupons?message=Loyalty rule saved')
+    await setSetting('coupon_default_days', String(form.data.couponDays))
+    return reply.redirect('/admin/coupons?message=Settings saved')
   })
 
   app.post('/admin/coupons', async (req, reply) => {
@@ -318,9 +325,11 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
       })
       .safeParse(req.body ?? {})
     if (!form.success) return reply.redirect('/admin/coupons?message=Enter a code and a percent (1-100)')
-    const expiresAt = form.data.expires ? new Date(form.data.expires) : null
+    // Empty expiry → use the admin's default lifetime (default 7 days).
+    const explicit = form.data.expires ? new Date(form.data.expires) : null
+    const expiresAt = explicit && !Number.isNaN(explicit.getTime()) ? explicit : await defaultCouponExpiry()
     const maxUses = form.data.maxUses ? Number.parseInt(form.data.maxUses, 10) : null
-    await createCoupon(form.data.code, form.data.percent, Number.isNaN(expiresAt?.getTime()) ? null : expiresAt, maxUses)
+    await createCoupon(form.data.code, form.data.percent, expiresAt, maxUses)
     return reply.redirect('/admin/coupons?message=Coupon saved')
   })
 

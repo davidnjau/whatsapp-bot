@@ -15,7 +15,8 @@
   </div>
   <label style="font-size:13px;color:var(--muted)">After every<input name="n" type="number" min="1" max="50" value="{{ loyaltyN }}" class="e-input" style="display:block;margin-top:4px;width:80px"> paid orders</label>
   <label style="font-size:13px;color:var(--muted)">Give<input name="percent" type="number" min="1" max="100" value="{{ loyaltyPercent }}" class="e-input" style="display:block;margin-top:4px;width:80px"> % off</label>
-  <button class="e-btn e-btn-dark">Save rule</button>
+  <label style="font-size:13px;color:var(--muted)">Coupons expire after<input name="couponDays" type="number" min="1" max="365" value="{{ couponDays }}" class="e-input" style="display:block;margin-top:4px;width:80px"> days (default)</label>
+  <button class="e-btn e-btn-dark">Save settings</button>
 </form>
 
 <form method="post" action="/admin/coupons" class="e-card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px">

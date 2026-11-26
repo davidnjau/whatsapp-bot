@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { query } from '../../db.js'
 import { log } from '../../logger.js'
 import { saveMedia } from '../status/media.js'
+import { createCampaign, setCampaignPhoto } from './campaigns.js'
 
 // The 8 reference dresses — copy taken verbatim from the design handoff. Seeded
 // once (idempotent via products.seed_key) so the new shop has rich content with
@@ -154,5 +155,51 @@ export async function seedReferenceDresses(): Promise<void> {
     } catch (err) {
       log.warn({ err: (err as Error).message, dress: d.name }, 'could not seed reference dress')
     }
+  }
+}
+
+// Two example campaigns (idempotent): a Christmas text banner and a New Year
+// photo-only banner. The owner edits the dates/content; dates are examples.
+export async function seedCampaigns(): Promise<void> {
+  const exists = await query('SELECT 1 FROM campaigns LIMIT 1')
+  if (exists.rowCount) return
+  try {
+    await createCampaign({
+      name: 'Christmas sale',
+      banner_type: 'text',
+      headline: 'Christmas sale',
+      subtext: 'Up to 40% off party dresses',
+      button_text: 'Shop the sale',
+      button_link: '/shop',
+      photo_alt: null,
+      bg_color: '#f1ebe4',
+      text_color: '#2b2724',
+      starts_at: new Date('2026-12-01T00:00:00+03:00'),
+      ends_at: new Date('2026-12-26T23:59:00+03:00'),
+      show_countdown: true,
+      whatsapp_message: '🎄 Dress Nation Christmas sale — up to 40% off party dresses!',
+      active: true,
+    })
+    const photo = await saveSeedFile('d2-model.jpg', 'image/jpeg')
+    const id = await createCampaign({
+      name: 'New year clearance',
+      banner_type: 'photo',
+      headline: null,
+      subtext: null,
+      button_text: null,
+      button_link: '/shop',
+      photo_alt: 'New year clearance',
+      bg_color: '#faf9f5',
+      text_color: '#2b2724',
+      starts_at: new Date('2026-12-27T00:00:00+03:00'),
+      ends_at: new Date('2027-01-05T23:59:00+03:00'),
+      show_countdown: false,
+      whatsapp_message: 'New year clearance at Dress Nation — grab yours!',
+      active: true,
+    })
+    await setCampaignPhoto(id, photo, null)
+    log.info('seeded example campaigns')
+  } catch (err) {
+    log.warn({ err: (err as Error).message }, 'could not seed campaigns')
   }
 }

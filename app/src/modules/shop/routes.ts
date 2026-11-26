@@ -20,6 +20,7 @@ import { formatKsh, productName } from './label.js'
 import { brand } from './brand.js'
 import { getCatalogue, getDress } from './catalogue.js'
 import { getValidCoupon } from './coupons.js'
+import { bannerDTO, getCampaign, isLive, liveCampaign } from './campaigns.js'
 import {
   accountOrder,
   getCustomer,
@@ -130,12 +131,32 @@ const POST_LIMIT = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } 
 export const shopRoutes: FastifyPluginAsync = async (app) => {
   // The shop is a single-page app (ported reference design); it loads the
   // catalogue from /shop/api/catalogue and handles its own hash routes.
-  app.get('/shop', async (req, reply) => {
+  const renderShell = async (req: FastifyRequest, reply: FastifyReply) => {
+    const promoId = Number((req.query as { promo?: string }).promo)
+    const promo = promoId ? await getCampaign(promoId) : null
+    const og = promo
+      ? {
+          title: promo.headline || promo.name,
+          desc: promo.subtext || 'Quality mtumba dresses, delivered across Kenya.',
+          image: promo.desktop_media_id ? `${config.appBaseUrl}/shop/media/${promo.desktop_media_id}` : '',
+        }
+      : null
     return reply.view('shop_app.njk', {
       wa: brand.whatsapp,
       stylistPrice: config.stylistPrice,
       isAdmin: isAdminReq(req),
+      og,
     })
+  }
+  app.get('/', renderShell)
+  app.get('/shop', renderShell)
+
+  // The one promotional banner to show right now (or {} if none).
+  app.get<{ Querystring: { id?: string } }>('/api/campaign/live', async (req, reply) => {
+    const id = Number(req.query.id)
+    let c = id ? await getCampaign(id) : null
+    if (!(c && isLive(c))) c = await liveCampaign()
+    return reply.header('Cache-Control', 'no-store').send(c ? bannerDTO(c) : {})
   })
 
   app.get<{ Params: { id: string } }>('/shop/p/:id', async (req, reply) => {

@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/dress-nation.css">
+<link rel="stylesheet" href="/static/banner.css">
+{% if og %}
+<meta property="og:title" content="{{ og.title }}">
+<meta property="og:description" content="{{ og.desc }}">
+{% if og.image %}<meta property="og:image" content="{{ og.image }}">{% endif %}
+<meta property="og:type" content="website">
+{% endif %}
 </head>
 <body>
 <header class="nav"><div class="wrap">
@@ -52,5 +59,6 @@
 
 <script>window.DN_WA="{{ wa }}";window.DN_STYLIST_PRICE={{ stylistPrice }};window.DN_ADMIN={{ 'true' if isAdmin else 'false' }};</script>
 <script src="/static/dress-nation.js"></script>
+<script src="/static/banner.js"></script>
 </body>
 </html>
