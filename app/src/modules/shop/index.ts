@@ -212,6 +212,22 @@ export async function updateProduct(
   )
 }
 
+// Uploads not yet AI-enriched and not excluded — the "awaiting enrichment" queue.
+export async function listAwaitingEnrichment(): Promise<
+  Array<{ id: number; title: string | null; size: string | null }>
+> {
+  const res = await query<{ id: number; title: string | null; size: string | null }>(
+    `SELECT id, title, size FROM products
+     WHERE ai_ingested_at IS NULL AND NOT ai_skipped AND status NOT IN ('archived', 'sold')
+     ORDER BY created_at DESC LIMIT 60`,
+  )
+  return res.rows.map((r) => ({ ...r, id: Number(r.id) }))
+}
+
+export async function setAiSkipped(id: number, skipped: boolean): Promise<void> {
+  await query('UPDATE products SET ai_skipped = $2 WHERE id = $1', [id, skipped])
+}
+
 // Full detail edit (owner review of AI-filled or hand-typed content).
 export async function updateProductDetails(
   id: number,

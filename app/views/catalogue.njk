@@ -35,6 +35,38 @@
 </div>
 {% endif %}
 
+{% if awaiting.length %}
+<div class="e-card" style="margin-bottom:20px">
+  <div style="margin-bottom:12px">
+    <h2 style="margin:0;font-size:18px;font-weight:500">✨ Awaiting AI enrichment ({{ awaiting.length }})</h2>
+    <p class="e-muted" style="font-size:13px;margin:4px 0 0">Tick the photos to enrich with AI, or exclude ones you'll handle by hand.{% if not ingestConfigured %} <span style="color:#7a1f2b">AI worker not configured yet.</span>{% endif %}</p>
+  </div>
+  <form method="post" action="/admin/catalogue/enrich-batch">
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      {% for p in awaiting %}
+      <div style="width:116px">
+        <label style="display:block;position:relative;cursor:pointer">
+          <input type="checkbox" name="ids" value="{{ p.id }}" checked
+                 style="position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:1;accent-color:var(--accent)">
+          <img src="/shop/img/{{ p.id }}" style="width:116px;height:150px;object-fit:cover;border-radius:10px;background:var(--panel);display:block" alt="">
+        </label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px">
+          <span class="e-muted" style="font-size:12px">#{{ p.id }}{% if p.size %} · {{ p.size }}{% endif %}</span>
+          <button type="submit" formaction="/admin/catalogue/{{ p.id }}/skip-ai" formnovalidate
+                  title="Exclude from AI" style="background:none;border:0;cursor:pointer;color:var(--muted);text-decoration:underline;font-size:12px">exclude</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <button class="e-btn e-btn-olive">✨ Enrich selected with AI</button>
+      <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=true});return false" class="e-muted" style="font-size:13px">Select all</a>
+      <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=false});return false" class="e-muted" style="font-size:13px">Select none</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
   {% for f in [
     { key: 'all', label: 'All' },

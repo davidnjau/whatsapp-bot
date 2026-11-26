@@ -5,7 +5,9 @@ import {
   catalogueCounts,
   getProduct,
   importProductImage,
+  listAwaitingEnrichment,
   listCatalogue,
+  setAiSkipped,
   publishAllDrafts,
   publishProduct,
   scanInbox,
@@ -62,15 +64,18 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     extra: Record<string, unknown>,
   ) {
     const page = Math.max(1, q.page ?? 1)
-    const [{ rows, total }, counts, hideSold] = await Promise.all([
+    const [{ rows, total }, counts, hideSold, awaiting] = await Promise.all([
       listCatalogue({ ...q, page, pageSize: PAGE_SIZE }),
       catalogueCounts(),
       getBool('hide_sold'),
+      listAwaitingEnrichment(),
     ])
     return reply.view('catalogue.njk', {
       authed: true,
       products: rows,
       counts,
+      awaiting,
+      ingestConfigured: ingestConfigured(),
       filter: q.filter,
       search: q.search ?? '',
       since: q.since ?? 'all',
@@ -180,11 +185,34 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // Queue an AI digitization run (dormant if the worker isn't configured).
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/ingest', async (req, reply) => {
+    await setAiSkipped(Number(req.params.id), false) // re-including a skipped one
     await enqueueIngest(Number(req.params.id))
     const msg = ingestConfigured()
       ? 'AI enrichment queued - the dress will update shortly, then review it.'
       : 'Queued, but the AI worker is not configured yet (set RUNPOD_ENDPOINT).'
     return reply.redirect(`/admin/catalogue?message=${encodeURIComponent(msg)}`)
+  })
+
+  // Enrich a selected batch of recent uploads (checkboxes from the panel).
+  app.post<{ Body: { ids?: string | string[] } }>('/admin/catalogue/enrich-batch', async (req, reply) => {
+    const raw = req.body?.ids
+    const ids = (Array.isArray(raw) ? raw : raw ? [raw] : []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    for (const id of ids) {
+      await setAiSkipped(id, false)
+      await enqueueIngest(id)
+    }
+    const msg = !ids.length
+      ? 'Pick at least one photo to enrich.'
+      : ingestConfigured()
+        ? `AI enrichment queued for ${ids.length} photo(s) — they'll update shortly, then review them.`
+        : `Queued ${ids.length}, but the AI worker is not configured yet (set RUNPOD_ENDPOINT).`
+    return reply.redirect(`/admin/catalogue?message=${encodeURIComponent(msg)}`)
+  })
+
+  // Exclude one upload from AI enrichment (stays a hand-editable draft).
+  app.post<{ Params: { id: string } }>('/admin/catalogue/:id/skip-ai', async (req, reply) => {
+    await setAiSkipped(Number(req.params.id), true)
+    return reply.redirect('/admin/catalogue?message=Excluded from AI enrichment')
   })
 
   // Full detail review/edit page (the AI-filled or hand-typed content).
