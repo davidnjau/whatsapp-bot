@@ -1,0 +1,129 @@
+{% extends "layout.njk" %}
+{% block title %}{{ o.dn }} — Dress Nation Admin{% endblock %}
+{% block content %}
+<a href="/admin/orders{% if back %}?{{ back }}{% endif %}" class="e-btn" style="margin-bottom:16px">← Orders</a>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin:12px 0">{{ message }}</p>{% endif %}
+
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+  <h1 class="e-h1" style="margin:0;font-size:30px">{{ o.dn }}</h1>
+  {% set st = o.status %}
+  <span class="e-tag" style="
+    {% if st == 'paid' %}background:#dbeafe;color:#1e40af
+    {% elif st == 'packed' %}background:#f1e4cf;color:#6b4e1e
+    {% elif st in ['dropped','collected'] %}background:var(--accent);color:#fff
+    {% elif st == 'cancelled' %}background:#f3dcd3;color:#7a1f2b
+    {% else %}background:var(--panel);color:var(--muted){% endif %}">{{ st | replace('_',' ') | upper }}</span>
+</div>
+
+<!-- timeline -->
+<div class="e-card" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+  {% for s in steps %}
+  <div style="flex:1 1 120px;text-align:center;padding:8px;border-radius:10px;{{ 'background:var(--panel)' if s.done else 'opacity:.5' }}">
+    <div style="font-weight:500;font-size:14px">{{ s.label }}</div>
+    <div class="e-muted" style="font-size:12px">{% if s.at %}{{ s.at | dtshort }}{% else %}—{% endif %}</div>
+  </div>
+  {% if not loop.last %}<div style="align-self:center;color:var(--muted)">→</div>{% endif %}
+  {% endfor %}
+</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+  <!-- left: items + payment -->
+  <div class="e-card" style="flex:1 1 320px;min-width:0">
+    <h2 style="margin:0 0 12px;font-size:16px;font-weight:500">Items</h2>
+    {% for i in o.items %}
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">
+      <img src="/shop/img/{{ i.product_id }}" data-lightbox="/shop/img/{{ i.product_id }}"
+           style="width:72px;height:96px;object-fit:cover;border-radius:10px;background:var(--panel);flex:none" alt="">
+      <div style="flex:1 1 auto;min-width:0">
+        <div style="font-weight:500">{{ i.title or ('Dress #' + i.product_id) }}</div>
+        <div class="e-muted" style="font-size:13px">#{{ i.product_id }}{% if i.size %} · size {{ i.size }}{% endif %} — Ksh {{ i.price_ksh }}</div>
+        {% if i.conflict_orders.length %}<div style="color:#7a1f2b;font-size:12px;margin-top:4px">⚠ also in {% for c in i.conflict_orders %}#{{ c.id }} ({{ c.status }}){% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+        <a href="/shop/p/{{ i.product_id }}" target="_blank" class="e-muted" style="font-size:12px">View on shop ↗</a>
+      </div>
+    </div>
+    {% endfor %}
+    <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+    <div style="display:flex;justify-content:space-between;font-size:14px"><span>Subtotal</span><span>Ksh {{ o.total_ksh + o.discount_ksh }}</span></div>
+    {% if o.discount_ksh %}<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--accent)"><span>🎟 {{ o.coupon_code }}</span><span>−Ksh {{ o.discount_ksh }}</span></div>{% endif %}
+    <div style="display:flex;justify-content:space-between;font-weight:600;font-size:16px;margin-top:4px"><span>Total</span><span>Ksh {{ o.total_ksh }}</span></div>
+    <p class="e-muted" style="font-size:13px;margin:10px 0 0">
+      Payment: {% if o.paid_at %}paid {{ o.paid_at | dtshort }}{% else %}not paid{% endif %}{% if o.mpesa_ref %} · M-Pesa {{ o.mpesa_ref }}{% endif %}
+    </p>
+  </div>
+
+  <!-- right: customer + delivery + actions -->
+  <div class="e-card" style="flex:1 1 280px;min-width:0">
+    <h2 style="margin:0 0 12px;font-size:16px;font-weight:500">{{ o.customer_name }}</h2>
+    <p style="font-size:14px;margin:0 0 6px">
+      📞 <a href="tel:{{ o.phone }}">{{ o.phone }}</a>
+      {% if o.wa %}· <a href="https://wa.me/{{ o.wa }}" target="_blank">WhatsApp ↗</a>{% endif %}
+    </p>
+    <p class="e-muted" style="font-size:14px;margin:0 0 6px">📍 {{ o.town }}</p>
+    <p class="e-muted" style="font-size:14px;margin:0 0 6px">🚚 {{ o.delivery_option }} — {{ o.delivery_location }}</p>
+    {% if o.package_code %}<p style="font-size:14px;margin:0 0 6px">📦 <span style="font-family:ui-monospace,monospace">{{ o.package_code }}</span></p>{% endif %}
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+      {% if o.status == 'paid' %}
+      <form method="post" action="/admin/orders/{{ o.id }}/packed" style="display:flex;gap:8px;align-items:center">
+        <input type="hidden" name="ret" value="{{ ret }}">
+        <label class="e-muted" style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" name="notify" value="1"> notify</label>
+        <button class="e-btn e-btn-dark">Mark packed</button>
+      </form>
+      {% elif o.status == 'packed' %}
+      <form method="post" action="/admin/orders/{{ o.id }}/dropped" style="display:flex;gap:6px;flex-wrap:wrap">
+        <input type="hidden" name="ret" value="{{ ret }}">
+        <input name="packageCode" placeholder="Package code" class="e-input" style="flex:1 1 120px" required>
+        <button class="e-btn e-btn-dark">Dropped at Pickup Mtaani</button>
+      </form>
+      {% elif o.status == 'dropped' %}
+      <form method="post" action="/admin/orders/{{ o.id }}/collected"><input type="hidden" name="ret" value="{{ ret }}"><button class="e-btn">Mark collected</button></form>
+      {% endif %}
+      {% if o.status in ['pending_payment','paid','packed'] %}
+      <form method="post" action="/admin/orders/{{ o.id }}/cancel" onsubmit="return confirm('Cancel {{ o.dn }}? Dresses return to the catalogue.')">
+        <input type="hidden" name="ret" value="{{ ret }}">
+        <button class="e-btn" style="color:#7a1f2b;border-color:#d8b4ab">Cancel order</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- internal notes -->
+<div class="e-card" style="margin-top:16px">
+  <h2 style="margin:0 0 10px;font-size:16px;font-weight:500">Internal notes <span class="e-muted" style="font-size:12px;font-weight:400">(admin only)</span></h2>
+  <form method="post" action="/admin/orders/{{ o.id }}/notes">
+    <input type="hidden" name="ret" value="{{ ret }}">
+    <textarea name="notes" rows="2" class="e-input" style="width:100%;resize:vertical" placeholder="Notes about this order…">{{ o.internal_notes or '' }}</textarea>
+    <button class="e-btn" style="margin-top:8px">Save notes</button>
+  </form>
+</div>
+
+<!-- message client -->
+<div class="e-card" id="message" style="margin-top:16px">
+  <h2 style="margin:0 0 10px;font-size:16px;font-weight:500">Message {{ o.customer_name }}</h2>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    {% for q in quick %}
+    <button type="button" class="e-pill" style="min-height:32px;font-size:12px" data-t="{{ q.text }}" onclick="document.getElementById('msgBody').value=this.dataset.t;document.getElementById('msgBody').focus()">{{ q.label }}</button>
+    {% endfor %}
+  </div>
+  <form method="post" action="/admin/orders/{{ o.id }}/message" onsubmit="var b=this.querySelector('[name=body]');if(!b.value.trim()){return false}this.querySelector('button[type=submit]').disabled=true">
+    <input type="hidden" name="ret" value="{{ ret }}">
+    <textarea id="msgBody" name="body" rows="3" class="e-input" style="width:100%;resize:vertical" placeholder="Type a message — it goes to the customer on WhatsApp" required></textarea>
+    <button type="submit" class="e-btn e-btn-olive" style="margin-top:8px">Send via WhatsApp</button>
+  </form>
+
+  {% if messages.length %}
+  <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+    {% for m in messages %}
+    <div style="background:#d9fdd3;border-radius:10px;padding:8px 12px;font-size:14px;align-self:flex-end;max-width:85%">
+      <div style="white-space:pre-wrap;word-break:break-word">{{ m.body }}</div>
+      <div class="e-muted" style="font-size:11px;text-align:right;margin-top:2px">{{ m.created_at | dtshort }} · {{ m.status or 'queued' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="e-muted" style="font-size:13px;margin:12px 0 0">No messages sent for this order yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

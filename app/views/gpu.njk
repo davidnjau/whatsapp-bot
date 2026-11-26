@@ -1,0 +1,138 @@
+{% extends "layout.njk" %}
+{% block title %}GPU & Ingest — Dress Nation Admin{% endblock %}
+{% block content %}
+<style>
+  .gpu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .gpu-stat{font-size:30px;font-weight:500;letter-spacing:-.02em;margin:4px 0}
+  .gpu-sub{font-size:13px;color:var(--muted)}
+  .gpu-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .gpu-row:last-child{border-bottom:0}
+  .gpu-bars{display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:10px}
+  .gpu-bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%}
+  .gpu-bars .fill{width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+  .gpu-bars .d{font-size:10px;color:var(--muted)}
+  .warn{background:#fdecea;border:1px solid #f5c6c2;color:#9b1c13;border-radius:12px;padding:12px 16px;font-size:14px;margin-bottom:16px}
+  .pill-ok{background:#e7f3e9;color:#2f6b3a}
+  .pill-bad{background:#fdecea;color:#9b1c13}
+</style>
+
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">GPU &amp; Ingest</p>
+    <h1 class="e-h1" style="margin:0">Spend &amp; health</h1>
+  </div>
+  <form method="post" action="/admin/gpu/refresh"><button class="e-btn">↻ Refresh</button></form>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+{% if not configured %}
+<div class="warn">Billing key not set — add <code>RUNPOD_BILLING_KEY</code> (billing:read + account:read) to the server env to see balance, spend and runway. Endpoint health still works below.</div>
+{% endif %}
+
+{% if lowBalance %}<div class="warn">⚠ Low balance: {{ f.balanceUsd }} is under ${{ warnBalance }}. Auto-pay is off — RunPod stops the endpoint at $0.</div>{% endif %}
+{% if lowRunway %}<div class="warn">⚠ Short runway: about {{ runway.daysLeft | round }} days of GPU budget left{% if runoutDate %} (runs out ~{{ runoutDate }}){% endif %}.</div>{% endif %}
+
+<div class="gpu-grid" style="margin-bottom:16px">
+  <!-- Balance -->
+  <div class="e-card">
+    <p class="gpu-sub">Balance</p>
+    <p class="gpu-stat">{{ f.balanceUsd }}</p>
+    <p class="gpu-sub">{{ f.balanceKes }}
+      {% if fx.rate %}· rate {{ f.rate }}{% endif %}
+      <span class="e-tag {{ 'pill-bad' if fx.source in ['manual','none'] else 'pill-ok' }}">{{ fx.source }}</span>
+    </p>
+    {% if fx.asOf %}<p class="gpu-sub" style="margin-top:4px">FX as of {{ fx.asOf }}</p>{% endif %}
+    {% if balance %}<p class="gpu-sub">{{ balance.billingMode }}</p>{% endif %}
+  </div>
+
+  <!-- Runway -->
+  <div class="e-card">
+    <p class="gpu-sub">Runway</p>
+    {% if runway and runway.daysLeft != null %}
+      <p class="gpu-stat">≈ {{ runway.daysLeft | round }} days</p>
+      <p class="gpu-sub">{% if runoutDate %}runs out ~{{ runoutDate }} · {% endif %}{{ f.avgDaily }}/day avg</p>
+    {% elif runway %}
+      <p class="gpu-stat">—</p>
+      <p class="gpu-sub">no measurable spend yet</p>
+    {% else %}
+      <p class="gpu-stat">—</p>
+    {% endif %}
+    {% if runway and not runway.enoughData %}<p class="gpu-sub" style="margin-top:4px">Not enough data yet — estimated from current spend rate.</p>{% endif %}
+  </div>
+
+  <!-- Spend -->
+  <div class="e-card">
+    <p class="gpu-sub">Spend</p>
+    <p class="gpu-stat">{{ f.spentToday }}</p>
+    <p class="gpu-sub">today · {{ f.spent7d }} last 7 days</p>
+    <p class="gpu-sub" style="margin-top:4px">{{ f.costPerPhoto }}/photo · {{ photos7d or 0 }} photos (7d)</p>
+    <p class="gpu-sub">network volume ≈ {{ f.networkMonthly }}/mo</p>
+  </div>
+</div>
+
+<!-- Daily spend chart -->
+{% if chart.length %}
+<div class="e-card" style="margin-bottom:16px">
+  <p class="gpu-sub">GPU spend — last 7 days (this endpoint)</p>
+  <div class="gpu-bars">
+    {% for c in chart %}
+    <div class="b" title="{{ c.date }}: {{ c.label }}">
+      <div class="fill" style="height:{{ c.pct }}%"></div>
+      <div class="d">{{ c.date }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Endpoint health -->
+<div class="gpu-grid" style="margin-bottom:16px">
+  <div class="e-card">
+    <p class="gpu-sub">Endpoint health
+      {% if health %}<span class="e-tag {{ 'pill-bad' if health.workers.unhealthy else 'pill-ok' }}">{{ 'issue' if health.workers.unhealthy else 'ok' }}</span>{% endif %}
+    </p>
+    {% if health %}
+      <div style="margin-top:8px">
+        <div class="gpu-row"><span>Completed</span><b>{{ health.jobs.completed }}</b></div>
+        <div class="gpu-row"><span>Failed</span><b>{{ health.jobs.failed }}</b></div>
+        <div class="gpu-row"><span>Retried</span><b>{{ health.jobs.retried }}</b></div>
+        <div class="gpu-row"><span>In queue</span><b>{{ health.jobs.inQueue }}</b></div>
+        <div class="gpu-row"><span>In progress</span><b>{{ health.jobs.inProgress }}</b></div>
+      </div>
+    {% else %}<p class="gpu-sub" style="margin-top:8px">Health unavailable.</p>{% endif %}
+  </div>
+
+  <div class="e-card">
+    <p class="gpu-sub">Workers</p>
+    {% if health %}
+      <div style="margin-top:8px">
+        <div class="gpu-row"><span>Idle</span><b>{{ health.workers.idle }}</b></div>
+        <div class="gpu-row"><span>Ready</span><b>{{ health.workers.ready }}</b></div>
+        <div class="gpu-row"><span>Running</span><b>{{ health.workers.running }}</b></div>
+        <div class="gpu-row"><span>Initializing</span><b>{{ health.workers.initializing }}</b></div>
+        <div class="gpu-row"><span>Throttled / unhealthy</span><b>{{ health.workers.throttled }} / {{ health.workers.unhealthy }}</b></div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="e-card">
+    <p class="gpu-sub">Failure rate (endpoint total)</p>
+    <p class="gpu-stat">{{ healthFailRatePct }}%</p>
+    <p class="gpu-sub">{% if health %}{{ health.jobs.failed }} failed of {{ health.jobs.completed + health.jobs.failed }}{% endif %}</p>
+    <p class="gpu-sub" style="margin-top:6px">Per-day failure rate &amp; a filterable failed-requests log arrive with batch job tracking (next phase).</p>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="e-card">
+  <p class="gpu-sub" style="margin-bottom:10px">Thresholds &amp; FX override</p>
+  <form method="post" action="/admin/gpu/settings" style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
+    <label style="font-size:13px">Warn under runway (days)<br><input class="e-input" type="number" name="runway_warn_days" value="{{ warnDays }}" min="1" style="width:120px"></label>
+    <label style="font-size:13px">Warn under balance ($)<br><input class="e-input" type="number" name="balance_warn_usd" value="{{ warnBalance }}" min="0" style="width:120px"></label>
+    <label style="font-size:13px">Manual USD→KES (fallback)<br><input class="e-input" type="number" step="0.01" name="fx_manual_rate" value="{{ manualRate }}" placeholder="auto" style="width:140px"></label>
+    <button class="e-btn e-btn-dark">Save</button>
+  </form>
+  <p class="gpu-sub" style="margin-top:10px">💡 Upload in batches to cut GPU cost — single uploads each pay a cold start plus ~60s idle time. Batched ingest is the next phase.</p>
+</div>
+{% endblock %}

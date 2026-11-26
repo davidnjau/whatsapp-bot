@@ -20,7 +20,12 @@ export interface Order {
   coupon_code: string | null
   discount_ksh: number
   package_code: string | null
+  mpesa_ref: string | null
+  internal_notes: string | null
   paid_at: Date | null
+  packed_at: Date | null
+  dropped_at: Date | null
+  cancelled_at: Date | null
   created_at: Date
 }
 
@@ -308,8 +313,153 @@ export async function listConflicts(): Promise<Record<string, Array<{ id: number
   return map
 }
 
+// Status filter groups shown as chips on the admin list.
+export const ORDER_GROUPS = ['all', 'not_handled', 'packed', 'dropped', 'cancelled'] as const
+export type OrderGroup = (typeof ORDER_GROUPS)[number]
+const GROUP_SQL: Record<OrderGroup, string | null> = {
+  all: null,
+  not_handled: `status = 'paid'`,
+  packed: `status = 'packed'`,
+  dropped: `status IN ('dropped', 'collected')`,
+  cancelled: `status = 'cancelled'`,
+}
+const SINCE_INTERVAL: Record<string, string> = {
+  '1w': '7 days',
+  '2w': '14 days',
+  '3w': '21 days',
+  '4w': '28 days',
+  '1mo': '30 days',
+}
+
+// Search (order no / name / phone / location) + date-range conditions, shared by
+// the list and the chip counts. Pushes bind params; returns SQL condition parts.
+function searchDateConds(q: string, since: string, params: unknown[]): string[] {
+  const conds: string[] = []
+  const term = q.trim()
+  if (term) {
+    params.push(`%${term}%`)
+    const p = `$${params.length}`
+    const digits = term.replace(/\D/g, '')
+    const n = digits ? Number(digits) : NaN
+    params.push(Number.isFinite(n) ? n - 1000 : -1) // DN-10042 -> id 9042
+    const pDn = `$${params.length}`
+    params.push(Number.isFinite(n) ? n : -1) // raw id fallback
+    const pRaw = `$${params.length}`
+    conds.push(
+      `(customer_name ILIKE ${p} OR phone ILIKE ${p} OR town ILIKE ${p} OR delivery_location ILIKE ${p} OR id = ${pDn} OR id = ${pRaw})`,
+    )
+  }
+  if (SINCE_INTERVAL[since]) {
+    params.push(SINCE_INTERVAL[since])
+    conds.push(`created_at > now() - ($${params.length})::interval`)
+  } else if (since === 'older') {
+    conds.push(`created_at < now() - interval '30 days'`)
+  }
+  return conds
+}
+
+export type OrderCounts = Record<OrderGroup, number>
+
+export async function orderCounts(q = '', since = 'all'): Promise<OrderCounts> {
+  const params: unknown[] = []
+  const conds = searchDateConds(q, since, params)
+  const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : ''
+  const res = await query<{ status: string; c: string }>(
+    `SELECT status, count(*) c FROM orders${where} GROUP BY status`,
+    params,
+  )
+  const counts: OrderCounts = { all: 0, not_handled: 0, packed: 0, dropped: 0, cancelled: 0 }
+  for (const r of res.rows) {
+    const n = Number(r.c)
+    counts.all += n
+    if (r.status === 'paid') counts.not_handled += n
+    else if (r.status === 'packed') counts.packed += n
+    else if (r.status === 'dropped' || r.status === 'collected') counts.dropped += n
+    else if (r.status === 'cancelled') counts.cancelled += n
+  }
+  return counts
+}
+
+export async function listOrdersPage(opts: {
+  group: OrderGroup
+  q?: string
+  since?: string
+  page?: number
+  limit?: number
+}): Promise<{ rows: Array<Order & { items: OrderItem[] }>; total: number; page: number; totalPages: number }> {
+  const limit = opts.limit ?? 20
+  const params: unknown[] = []
+  const conds = searchDateConds(opts.q ?? '', opts.since ?? 'all', params)
+  const groupCond = GROUP_SQL[opts.group]
+  if (groupCond) conds.push(groupCond)
+  const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : ''
+  const countRes = await query<{ c: string }>(`SELECT count(*) c FROM orders${where}`, params)
+  const total = Number(countRes.rows[0]?.c ?? 0)
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  const page = Math.min(Math.max(1, opts.page ?? 1), totalPages)
+  const pageParams = [...params, limit, (page - 1) * limit]
+  const res = await query<Order>(
+    `SELECT * FROM orders${where}
+     ORDER BY (status = 'pending_payment'), created_at DESC
+     LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
+    pageParams,
+  )
+  const rows = []
+  for (const order of res.rows) rows.push({ ...order, items: await orderItems(order.id) })
+  return { rows, total, page, totalPages }
+}
+
+export interface OrderMessage {
+  id: number
+  body: string
+  created_at: Date
+  status: string | null
+}
+
+export async function orderMessages(orderId: number): Promise<OrderMessage[]> {
+  const res = await query<OrderMessage>(
+    `SELECT om.id, om.body, om.created_at, s.status
+     FROM order_messages om LEFT JOIN sends s ON s.id = om.send_id
+     WHERE om.order_id = $1 ORDER BY om.created_at`,
+    [orderId],
+  )
+  return res.rows
+}
+
+// Admin → customer message about an order, through the same WhatsApp channel
+// Notify uses; logged against the order so delivery status shows in the history.
+export async function messageCustomer(
+  orderId: number,
+  text: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const body = text.trim()
+  if (!body) return { ok: false, reason: 'Message is empty.' }
+  const order = await getOrder(orderId)
+  if (!order) return { ok: false, reason: 'Order not found.' }
+  const chatId = toChatId(order.phone)
+  if (!chatId) return { ok: false, reason: 'Customer has no valid WhatsApp number.' }
+  const sendId = await enqueueSend({
+    chatId,
+    module: 'shop',
+    kind: 'order_message',
+    payload: { type: 'text', text: body },
+  })
+  await query('INSERT INTO order_messages (order_id, body, send_id) VALUES ($1, $2, $3)', [orderId, body, sendId])
+  return { ok: true }
+}
+
+export async function setOrderNotes(id: number, notes: string): Promise<void> {
+  await query('UPDATE orders SET internal_notes = $2 WHERE id = $1', [id, notes.trim() || null])
+}
+
 export async function setOrderStatus(id: number, status: Order['status']): Promise<void> {
-  await query('UPDATE orders SET status = $2 WHERE id = $1', [id, status])
+  const stampCol =
+    status === 'packed' ? 'packed_at' : status === 'cancelled' ? 'cancelled_at' : null
+  if (stampCol) {
+    await query(`UPDATE orders SET status = $2, ${stampCol} = now() WHERE id = $1`, [id, status])
+  } else {
+    await query('UPDATE orders SET status = $2 WHERE id = $1', [id, status])
+  }
   if (status === 'cancelled') {
     await query(
       `UPDATE products SET status = 'published', sold_at = NULL
@@ -322,7 +472,7 @@ export async function setOrderStatus(id: number, status: Order['status']): Promi
 // Mark dropped at Pickup Mtaani: records the package code and messages the
 // customer with tracking + the 3-day collection reminder.
 export async function markDropped(id: number, packageCode: string): Promise<void> {
-  await query(`UPDATE orders SET status = 'dropped', package_code = $2 WHERE id = $1`, [
+  await query(`UPDATE orders SET status = 'dropped', package_code = $2, dropped_at = now() WHERE id = $1`, [
     id,
     packageCode,
   ])

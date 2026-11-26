@@ -2,9 +2,18 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { config } from '../../config.js'
 import { enqueueSend } from '../../queue/index.js'
-import { toChatId } from '../../lib/phone.js'
+import { normalizePhone, toChatId } from '../../lib/phone.js'
 import { readMediaContent } from '../status/media.js'
-import { addToCart, cartCount, cartExists, cartProducts, createCart, removeFromCart } from './carts.js'
+import {
+  addToCart,
+  cartCount,
+  cartExists,
+  cartProducts,
+  createCart,
+  linkCartCustomer,
+  removeFromCart,
+  setCartContact,
+} from './carts.js'
 import { getProduct, type Product } from './index.js'
 import { isHeldByOther, listAvailable, reserveProduct } from './reservations.js'
 import {
@@ -62,6 +71,20 @@ function isAdminReq(req: FastifyRequest): boolean {
   if (!cookie) return false
   const { valid, value } = req.unsignCookie(cookie)
   return valid && value === 'ok'
+}
+
+// Admins designated by phone get the same signed admin_session as a
+// username/password login once they verify a normal customer code.
+function grantAdminIfPhone(reply: FastifyReply, phone: string) {
+  if (!config.adminPhones.has(phone)) return
+  reply.setCookie('admin_session', 'ok', {
+    signed: true,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: 'auto',
+    path: '/',
+    maxAge: 30 * 24 * 3600,
+  })
 }
 
 async function getCartId(req: FastifyRequest): Promise<string | null> {
@@ -200,8 +223,21 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     if (product?.status !== 'published') return reply.send({ ok: false, taken: true, ids: [] })
     const cartId = await ensureCartId(req, reply)
     const held = await addToCart(cartId, productId)
+    const custId = await getCustomerId(req)
+    if (custId) await linkCartCustomer(cartId, custId).catch(() => {})
     const ids = (await cartProducts(cartId)).map((p) => Number(p.id))
     return reply.send({ ok: held, taken: !held, ids })
+  })
+
+  // Capture the checkout phone onto the cart so an abandoned checkout is
+  // reachable, even for anonymous shoppers who never log in or pay.
+  app.post('/shop/api/cart/contact', POST_LIMIT, async (req, reply) => {
+    const { phone } = z.object({ phone: z.string().min(9) }).parse(req.body ?? {})
+    const normalized = normalizePhone(phone)
+    if (!normalized) return reply.send({ ok: false })
+    const cartId = await ensureCartId(req, reply)
+    await setCartContact(cartId, normalized)
+    return reply.send({ ok: true })
   })
 
   app.post('/shop/api/cart/remove', POST_LIMIT, async (req, reply) => {
@@ -357,11 +393,16 @@ export const shopRoutes: FastifyPluginAsync = async (app) => {
     const customer = await verifyLoginCode(phone, code)
     if (!customer) return reply.send({ error: 'That code is wrong or expired.' })
     setCustomerCookie(reply, customer.id)
-    return reply.send({ ok: true, phone: customer.phone, name: customer.name })
+    // Attach any in-progress cart to the account so it can be followed up.
+    const existingCart = await getCartId(req)
+    if (existingCart) await linkCartCustomer(existingCart, customer.id).catch(() => {})
+    grantAdminIfPhone(reply, customer.phone)
+    return reply.send({ ok: true, phone: customer.phone, name: customer.name, admin: config.adminPhones.has(customer.phone) })
   })
 
   app.post('/shop/api/auth/logout', async (_req, reply) => {
     reply.clearCookie(CUST_COOKIE, { path: '/' })
+    reply.clearCookie('admin_session', { path: '/' })
     return reply.send({ ok: true })
   })
 

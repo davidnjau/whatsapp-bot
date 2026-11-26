@@ -10,4 +10,6 @@ export const OPTOUT_EXEMPT_KINDS = new Set([
   'stylist',
   'login',
   'loyalty',
+  // Admin deliberately messaging a customer about their own order — transactional.
+  'order_message',
 ])

@@ -1,22 +1,5 @@
 {% extends "layout.njk" %}
-{% block title %}Chats — WhatsApp Bot{% endblock %}
+{% block title %}Chats — Dress Nation Admin{% endblock %}
 {% block content %}
-<h1 class="text-lg font-semibold">Conversations</h1>
-<div class="bg-white rounded-xl shadow divide-y">
-  {% for c in chats %}
-  <a href="/admin/chats/{{ c.chat_id | urlencode }}" class="block p-4 hover:bg-gray-50">
-    <div class="flex items-center justify-between">
-      <p class="font-medium">{{ c.name or c.chat_id.replace('@c.us', '') }}</p>
-      {% if c.bot_paused %}
-      <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800">
-        bot paused{% if c.paused_reason %} ({{ c.paused_reason }}){% endif %}
-      </span>
-      {% endif %}
-    </div>
-    <p class="text-sm text-gray-500 truncate">{{ c.last_body or '—' }}</p>
-  </a>
-  {% else %}
-  <p class="p-4 text-sm text-gray-500">No conversations yet.</p>
-  {% endfor %}
-</div>
+{{ body | safe }}
 {% endblock %}

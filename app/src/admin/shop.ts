@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
-import { listActiveCarts } from '../modules/shop/carts.js'
+import { countAbandonedCarts, listActiveCarts, messageCartCustomer } from '../modules/shop/carts.js'
 import {
   catalogueCounts,
   getProduct,
@@ -18,7 +18,25 @@ import {
   type Product,
 } from '../modules/shop/index.js'
 import { getBool, getSetting, setSetting } from '../lib/settings.js'
-import { dnCode, listConflicts, listOrders, markDropped, setOrderStatus } from '../modules/shop/orders.js'
+import {
+  dnCode,
+  getOrder,
+  listConflicts,
+  listOrdersPage,
+  markDropped,
+  messageCustomer,
+  orderCounts,
+  orderItems,
+  orderMessages,
+  ORDER_GROUPS,
+  setOrderNotes,
+  setOrderStatus,
+  statusIndex,
+  type Order,
+  type OrderGroup,
+} from '../modules/shop/orders.js'
+import { productName } from '../modules/shop/label.js'
+import { toChatId } from '../lib/phone.js'
 import { addProductMedia, deleteProductMedia, listProductMedia } from '../modules/shop/catalogue.js'
 import { createCoupon, defaultCouponExpiry, listCoupons, setCouponActive } from '../modules/shop/coupons.js'
 import { saveMedia } from '../modules/status/media.js'
@@ -339,49 +357,175 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
     return reply.redirect('/admin/coupons?message=Updated')
   })
 
-  // --- carts (what people have added) ---
-  app.get('/admin/carts', async (_req, reply) => {
-    return reply.view('carts.njk', { authed: true, carts: await listActiveCarts() })
-  })
-
-  // --- orders dashboard ---
-  app.get('/admin/orders', async (req, reply) => {
-    const [orders, conflicts] = await Promise.all([listOrders(), listConflicts()])
-    // Annotate each item with the OTHER orders claiming the same dress.
-    const view = orders.map((o) => ({
-      ...o,
-      dn: dnCode(o.id),
-      items: o.items.map((i) => ({
-        ...i,
-        conflict_orders: (conflicts[i.product_id] ?? []).filter((c) => c.id !== o.id),
-      })),
-    }))
-    return reply.view('orders.njk', {
+  // --- carts (abandoned — added but never ordered) ---
+  app.get<{ Querystring: { message?: string } }>('/admin/carts', async (req, reply) => {
+    return reply.view('carts.njk', {
       authed: true,
-      orders: view,
-      message: (req.query as any)?.message ?? null,
+      carts: await listActiveCarts(),
+      message: req.query.message ?? null,
     })
   })
 
-  app.post<{ Params: { id: string } }>('/admin/orders/:id/packed', async (req, reply) => {
-    await setOrderStatus(Number(req.params.id), 'packed')
-    return reply.redirect('/admin/orders?message=Marked packed')
+  app.post<{ Params: { cartId: string }; Body: { body?: string } }>('/admin/carts/:cartId/message', async (req, reply) => {
+    const form = z.object({ body: z.string().min(1) }).safeParse(req.body ?? {})
+    if (!form.success) return reply.redirect('/admin/carts?message=Message was empty')
+    const res = await messageCartCustomer(req.params.cartId, form.data.body)
+    return reply.redirect(`/admin/carts?message=${encodeURIComponent(res.ok ? 'Message sent' : res.reason)}`)
   })
 
-  app.post<{ Params: { id: string } }>('/admin/orders/:id/dropped', async (req, reply) => {
-    const form = z.object({ packageCode: z.string().min(2) }).safeParse(req.body ?? {})
-    if (!form.success) return reply.redirect('/admin/orders?message=Package code required')
-    await markDropped(Number(req.params.id), form.data.packageCode.trim())
-    return reply.redirect('/admin/orders?message=Marked dropped - customer sent the package code')
-  })
+  // Redirect back to wherever the action came from (list with filters, or detail).
+  const backTo = (ret: unknown, msg: string): string => {
+    const base = typeof ret === 'string' && ret.startsWith('/admin/orders') ? ret : '/admin/orders'
+    return `${base}${base.includes('?') ? '&' : '?'}message=${encodeURIComponent(msg)}`
+  }
 
-  app.post<{ Params: { id: string } }>('/admin/orders/:id/collected', async (req, reply) => {
+  // --- orders dashboard (filter chips, search, date range, pagination) ---
+  app.get<{ Querystring: { status?: string; q?: string; since?: string; page?: string; message?: string } }>(
+    '/admin/orders',
+    async (req, reply) => {
+      const group: OrderGroup = (ORDER_GROUPS as readonly string[]).includes(req.query.status ?? '')
+        ? (req.query.status as OrderGroup)
+        : 'not_handled' // work queue is the default view
+      const q = req.query.q ?? ''
+      const since = req.query.since ?? 'all'
+      const page = Number(req.query.page) || 1
+      const [{ rows, total, page: cur, totalPages }, counts, conflicts, abandoned] = await Promise.all([
+        listOrdersPage({ group, q, since, page }),
+        orderCounts(q, since),
+        listConflicts(),
+        countAbandonedCarts(),
+      ])
+      const nbiDay = (d: Date | string) =>
+        new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date(d))
+      const view = rows.map((o) => ({
+        ...o,
+        dn: dnCode(o.id),
+        paid_same_day: o.paid_at ? nbiDay(o.created_at) === nbiDay(o.paid_at) : false,
+        items: o.items.map((i) => ({
+          ...i,
+          conflict_orders: (conflicts[i.product_id] ?? []).filter((c) => c.id !== o.id),
+        })),
+      }))
+      return reply.view('orders.njk', {
+        authed: true,
+        orders: view,
+        counts,
+        abandoned,
+        group,
+        search: q,
+        since,
+        page: cur,
+        totalPages,
+        total,
+        message: req.query.message ?? null,
+      })
+    },
+  )
+
+  // --- single order detail ---
+  app.get<{ Params: { id: string }; Querystring: { back?: string; message?: string } }>(
+    '/admin/orders/:id',
+    async (req, reply) => {
+      const id = Number(req.params.id)
+      const order = await getOrder(id)
+      if (!order) return reply.callNotFound()
+      const [items, messages, conflicts] = await Promise.all([
+        orderItems(id),
+        orderMessages(id),
+        listConflicts(),
+      ])
+      const first = items[0]
+      const dress = first ? productName({ id: first.product_id, title: first.title, size: first.size, price_ksh: first.price_ksh }) : `order ${dnCode(id)}`
+      const name = order.customer_name
+      const code = order.package_code ?? '{code}'
+      const quick = [
+        { label: 'Packed', text: `Hi ${name}, your ${dress} (size ${first?.size ?? '?'}) is packed and will be dispatched today.` },
+        { label: 'Dropped', text: `Hi ${name}, your order ${dnCode(id)} has been dropped at ${order.delivery_location}. Package code: ${code}.` },
+        { label: 'Delay', text: `Hi ${name}, there's a small delay on order ${dnCode(id)}. We'll update you shortly.` },
+      ]
+      // Timeline steps with their timestamps (cancelled replaces the tail).
+      const steps = order.status === 'cancelled'
+        ? [
+            { label: 'Ordered', at: order.created_at, done: true },
+            { label: 'Paid', at: order.paid_at, done: !!order.paid_at },
+            { label: 'Cancelled', at: order.cancelled_at, done: true },
+          ]
+        : [
+            { label: 'Ordered', at: order.created_at, done: true },
+            { label: 'Paid', at: order.paid_at, done: !!order.paid_at },
+            { label: 'Packed', at: order.packed_at, done: !!order.packed_at },
+            { label: 'Dropped', at: order.dropped_at, done: !!order.dropped_at },
+          ]
+      const back = typeof req.query.back === 'string' ? req.query.back : ''
+      const wa = toChatId(order.phone)
+      return reply.view('order_detail.njk', {
+        authed: true,
+        o: { ...order, dn: dnCode(id), wa: wa ? wa.replace('@c.us', '') : '' },
+        items: items.map((i) => ({ ...i, conflict_orders: (conflicts[i.product_id] ?? []).filter((c) => c.id !== id) })),
+        messages,
+        quick,
+        steps,
+        tracker: statusIndex(order.status),
+        back,
+        ret: `/admin/orders/${id}${back ? '?back=' + encodeURIComponent(back) : ''}`,
+        message: req.query.message ?? null,
+      })
+    },
+  )
+
+  app.post<{ Params: { id: string }; Body: { ret?: string; notify?: string } }>(
+    '/admin/orders/:id/packed',
+    async (req, reply) => {
+      const id = Number(req.params.id)
+      await setOrderStatus(id, 'packed')
+      if (req.body?.notify) {
+        const order = await getOrder(id)
+        const items = await orderItems(id)
+        const first = items[0]
+        if (order) {
+          const dress = first ? productName({ id: first.product_id, title: first.title, size: first.size, price_ksh: first.price_ksh }) : `order ${dnCode(id)}`
+          await messageCustomer(id, `Hi ${order.customer_name}, your ${dress} (size ${first?.size ?? '?'}) is packed and will be dispatched today.`)
+        }
+      }
+      return reply.redirect(backTo(req.body?.ret, 'Marked packed'))
+    },
+  )
+
+  app.post<{ Params: { id: string }; Body: { packageCode?: string; ret?: string } }>(
+    '/admin/orders/:id/dropped',
+    async (req, reply) => {
+      const form = z.object({ packageCode: z.string().min(2) }).safeParse(req.body ?? {})
+      if (!form.success) return reply.redirect(backTo(req.body?.ret, 'Package code required'))
+      await markDropped(Number(req.params.id), form.data.packageCode.trim())
+      return reply.redirect(backTo(req.body?.ret, 'Marked dropped — customer notified'))
+    },
+  )
+
+  app.post<{ Params: { id: string }; Body: { ret?: string } }>('/admin/orders/:id/collected', async (req, reply) => {
     await setOrderStatus(Number(req.params.id), 'collected')
-    return reply.redirect('/admin/orders?message=Marked collected')
+    return reply.redirect(backTo(req.body?.ret, 'Marked collected'))
   })
 
-  app.post<{ Params: { id: string } }>('/admin/orders/:id/cancel', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { ret?: string } }>('/admin/orders/:id/cancel', async (req, reply) => {
     await setOrderStatus(Number(req.params.id), 'cancelled')
-    return reply.redirect('/admin/orders?message=Cancelled - dresses returned to the catalogue')
+    return reply.redirect(backTo(req.body?.ret, 'Cancelled — dresses returned to the catalogue'))
   })
+
+  app.post<{ Params: { id: string }; Body: { body?: string; ret?: string } }>(
+    '/admin/orders/:id/message',
+    async (req, reply) => {
+      const form = z.object({ body: z.string().min(1), ret: z.string().optional() }).safeParse(req.body ?? {})
+      if (!form.success) return reply.redirect(backTo(req.body?.ret, 'Message was empty'))
+      const res = await messageCustomer(Number(req.params.id), form.data.body)
+      return reply.redirect(backTo(req.body?.ret, res.ok ? 'Message sent' : res.reason))
+    },
+  )
+
+  app.post<{ Params: { id: string }; Body: { notes?: string; ret?: string } }>(
+    '/admin/orders/:id/notes',
+    async (req, reply) => {
+      await setOrderNotes(Number(req.params.id), req.body?.notes ?? '')
+      return reply.redirect(backTo(req.body?.ret, 'Notes saved'))
+    },
+  )
 }

@@ -14,10 +14,12 @@
 {% if campaigns.length %}
 <div style="display:flex;flex-direction:column;gap:12px">
   {% for c in campaigns %}
-  <div class="e-card" style="display:flex;gap:14px;align-items:flex-start;padding:14px">
-    <div style="width:84px;height:60px;flex:none;border-radius:8px;overflow:hidden;background:var(--panel)">
-      {% if c.desktop_media_id %}<img src="/shop/media/{{ c.desktop_media_id }}" style="width:100%;height:100%;object-fit:cover" alt="">{% endif %}
-    </div>
+  <div class="e-card dn-row" style="display:flex;gap:14px;align-items:flex-start;padding:14px">
+    <a href="/admin/campaigns/{{ c.id }}/edit" title="Edit / photo" style="flex:none">
+      <div style="width:84px;height:60px;border-radius:8px;overflow:hidden;background:var(--panel)">
+        {% if c.desktop_media_id %}<img src="/shop/media/{{ c.desktop_media_id }}" style="width:100%;height:100%;object-fit:cover" alt="">{% endif %}
+      </div>
+    </a>
     <div style="flex:1 1 auto;min-width:0">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-weight:500">{{ c.name }}</span>
@@ -27,26 +29,33 @@
           {% elif c._status == 'ended' %}background:var(--panel);color:var(--muted)
           {% else %}background:#e7ddd1;color:var(--muted){% endif %}">{{ c._status }}</span>
         <span class="e-tag" style="background:var(--panel);color:var(--muted)">{{ 'photo' if c.banner_type == 'photo' else 'text' }}</span>
+        <span class="e-muted" style="font-size:12px">{{ c.starts_at | date }} → {{ c.ends_at | date }}</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <form method="post" action="/admin/campaigns/{{ c.id }}/toggle">
+            <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+            <button class="dn-icon {{ 'on' if c.active }}" title="{{ 'On — click to turn off' if c.active else 'Off — click to turn on' }}" aria-label="Toggle campaign">⏻</button>
+          </form>
+          <div class="dn-kebab">
+            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+            <div class="dn-menu">
+              <a href="/admin/campaigns/{{ c.id }}/edit">Edit / photo</a>
+              <a href="/admin/campaigns/{{ c.id }}/preview" target="_blank">Preview ↗</a>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/duplicate"><button>Duplicate</button></form>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/toggle">
+                <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+                <button>{{ 'Turn off' if c.active else 'Turn on' }}</button>
+              </form>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.name }}? This cannot be undone.')"><button class="danger">Delete</button></form>
+            </div>
+          </div>
+        </div>
       </div>
-      <p class="e-muted" style="font-size:13px;margin:6px 0 0">{{ c.starts_at | date }} → {{ c.ends_at | date }}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
-        <a href="/admin/campaigns/{{ c.id }}/edit" class="e-btn">Edit / photo</a>
-        <a href="/admin/campaigns/{{ c.id }}/preview" target="_blank" class="e-btn">Preview</a>
-        <form method="post" action="/admin/campaigns/{{ c.id }}/duplicate"><button class="e-btn">Duplicate</button></form>
-        <form method="post" action="/admin/campaigns/{{ c.id }}/toggle">
-          <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
-          <button class="e-btn">{{ 'Turn off' if c.active else 'Turn on' }}</button>
-        </form>
-        <form method="post" action="/admin/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.name }}? This cannot be undone.')">
-          <button class="e-btn" style="color:#7a1f2b;border-color:#d8b4ab">Delete</button>
-        </form>
-        <form method="post" action="/admin/campaigns/{{ c.id }}/reuse" style="display:flex;gap:6px;align-items:center;margin-left:auto">
-          <span class="e-muted" style="font-size:12px">Reuse:</span>
-          <input type="datetime-local" name="starts" required class="e-input" style="font-size:12px">
-          <input type="datetime-local" name="ends" required class="e-input" style="font-size:12px">
-          <button class="e-btn">Copy with dates</button>
-        </form>
-      </div>
+      <form method="post" action="/admin/campaigns/{{ c.id }}/reuse" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span class="e-muted" style="font-size:12px">Reuse with new dates:</span>
+        <input type="datetime-local" name="starts" required class="e-input" style="font-size:12px">
+        <input type="datetime-local" name="ends" required class="e-input" style="font-size:12px">
+        <button class="e-btn" style="min-height:32px;font-size:12px">Copy</button>
+      </form>
     </div>
   </div>
   {% endfor %}

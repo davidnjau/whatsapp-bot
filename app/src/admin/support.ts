@@ -9,20 +9,21 @@ import {
   writeKnowledgeFile,
 } from '../modules/support/knowledge.js'
 import { requireWebAuth } from './auth.js'
+import { renderChat, renderChatList } from './whatsapp-chat-ui.js'
 
 export const adminSupportRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireWebAuth)
 
-  app.get('/admin/chats', async (_req, reply) => {
+  app.get<{ Querystring: { page?: string; q?: string } }>('/admin/chats', async (req, reply) => {
     const chats = await query<{
       chat_id: string
       bot_paused: boolean
-      paused_reason: string | null
       name: string | null
+      phone: string | null
       last_body: string | null
       last_at: Date | null
     }>(
-      `SELECT c.chat_id, c.bot_paused, c.paused_reason, ct.name,
+      `SELECT c.chat_id, c.bot_paused, ct.name, ct.phone,
               m.body AS last_body, m.created_at AS last_at
        FROM chats c
        LEFT JOIN contacts ct ON ct.chat_id = c.chat_id
@@ -32,39 +33,67 @@ export const adminSupportRoutes: FastifyPluginAsync = async (app) => {
        ) m ON true
        WHERE c.kind = 'dm'
        ORDER BY m.created_at DESC NULLS LAST
-       LIMIT 100`,
+       LIMIT 500`,
     )
-    return reply.view('chats.njk', { authed: true, chats: chats.rows })
-  })
-
-  app.get<{ Params: { chatId: string } }>('/admin/chats/:chatId', async (req, reply) => {
-    const chatId = req.params.chatId
-    const [chat, contact, messages] = await Promise.all([
-      query<{ chat_id: string; bot_paused: boolean; paused_reason: string | null }>(
-        'SELECT chat_id, bot_paused, paused_reason FROM chats WHERE chat_id = $1',
-        [chatId],
-      ),
-      query<{ name: string | null; phone: string | null; opted_in: boolean }>(
-        'SELECT name, phone, opted_in FROM contacts WHERE chat_id = $1',
-        [chatId],
-      ),
-      query<{ body: string | null; from_me: boolean; type: string | null; created_at: Date }>(
-        `SELECT body, from_me, type, created_at FROM messages
-         WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 50`,
-        [chatId],
-      ),
-    ])
-    if (!chat.rows[0]) return reply.callNotFound()
-    return reply.view('chat.njk', {
-      authed: true,
-      chat: chat.rows[0],
-      contact: contact.rows[0] ?? null,
-      messages: messages.rows.reverse(),
+    const body = renderChatList({
+      chats: chats.rows.map((r) => ({
+        id: r.chat_id,
+        name: r.name,
+        number: r.phone,
+        lastMessage: r.last_body,
+        lastTimestamp: r.last_at,
+        paused: r.bot_paused,
+      })),
+      page: req.query.page,
+      q: req.query.q,
     })
+    return reply.view('chats.njk', { authed: true, body })
   })
 
+  app.get<{ Params: { chatId: string }; Querystring: { before?: string } }>(
+    '/admin/chats/:chatId',
+    async (req, reply) => {
+      const chatId = req.params.chatId
+      const before = req.query.before && /^\d+$/.test(req.query.before) ? req.query.before : null
+      const [chat, contact, messages] = await Promise.all([
+        query<{ chat_id: string; bot_paused: boolean }>(
+          'SELECT chat_id, bot_paused FROM chats WHERE chat_id = $1',
+          [chatId],
+        ),
+        query<{ name: string | null; phone: string | null }>(
+          'SELECT name, phone FROM contacts WHERE chat_id = $1',
+          [chatId],
+        ),
+        // Page in the DB: newest 40 before the cursor (+1 to detect older), then reverse.
+        query<{ body: string | null; from_me: boolean; created_at: Date }>(
+          `SELECT body, from_me, created_at FROM messages
+           WHERE chat_id = $1 AND ($2::bigint IS NULL OR created_at < to_timestamp($2::bigint / 1000.0))
+           ORDER BY created_at DESC LIMIT 41`,
+          [chatId, before],
+        ),
+      ])
+      if (!chat.rows[0]) return reply.callNotFound()
+      const c = contact.rows[0] ?? null
+      const body = renderChat({
+        chat: { id: chatId, name: c?.name, number: c?.phone, paused: chat.rows[0].bot_paused },
+        messages: messages.rows.reverse().map((m) => ({
+          fromMe: m.from_me,
+          body: m.body ?? '',
+          timestamp: m.created_at,
+        })),
+        before: before ?? undefined,
+      })
+      return reply.view('chat.njk', { authed: true, body })
+    },
+  )
+
+  // Single button in the WhatsApp UI posts here — toggle based on current state.
   app.post<{ Params: { chatId: string } }>('/admin/chats/:chatId/pause', async (req, reply) => {
-    await setBotPaused(req.params.chatId, true, 'admin')
+    const cur = await query<{ bot_paused: boolean }>('SELECT bot_paused FROM chats WHERE chat_id = $1', [
+      req.params.chatId,
+    ])
+    const nowPaused = !cur.rows[0]?.bot_paused
+    await setBotPaused(req.params.chatId, nowPaused, nowPaused ? 'admin' : null)
     return reply.redirect(`/admin/chats/${encodeURIComponent(req.params.chatId)}`)
   })
 

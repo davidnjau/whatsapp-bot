@@ -50,6 +50,11 @@
     .dn-menu a,.dn-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:400 14px Inter,sans-serif;color:var(--ink);border-radius:8px;cursor:pointer;text-decoration:none}
     .dn-menu a:hover,.dn-menu button:hover{background:var(--panel)}
     .dn-menu .danger{color:#7a1f2b}
+    .dn-lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+    .dn-lb.open{display:flex}
+    .dn-lb img{max-width:95vw;max-height:92vh;border-radius:8px;object-fit:contain}
+    .dn-lb-x{position:absolute;top:14px;right:20px;color:#fff;font-size:36px;line-height:1;cursor:pointer;background:none;border:0}
+    [data-lightbox]{cursor:zoom-in}
     .sidetoggle{display:none}
     @media(max-width:760px){
       .side{display:none;position:fixed;inset:0 auto 0 0;z-index:40;max-width:280px;width:82%}
@@ -78,6 +83,8 @@
         <a href="/admin/campaigns">Campaigns</a>
         <a href="/admin/carts">Carts</a>
         <a href="/shop" target="_blank">View shop ↗</a>
+        <div class="grp">GPU &amp; Ingest</div>
+        <a href="/admin/gpu">Spend &amp; health</a>
         <div class="grp">Bot</div>
         <a href="/admin/chats">Chats</a>
         <a href="/admin/knowledge">Knowledge</a>
@@ -97,6 +104,7 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+  <div class="dn-lb" id="dnLb" role="dialog" aria-modal="true"><button class="dn-lb-x" aria-label="Close">&times;</button><img src="" alt="Full photo"></div>
   <script>
     (function () {
       var here = location.pathname;
@@ -122,6 +130,18 @@
       });
       if (btn) { btn.nextElementSibling.classList.toggle('open'); e.stopPropagation(); }
     });
+    // Photo lightbox: click any [data-lightbox] to open; ✕ / backdrop / Esc to close.
+    (function () {
+      var lb = document.getElementById('dnLb'); if (!lb) return;
+      var img = lb.querySelector('img');
+      function close() { lb.classList.remove('open'); img.src = ''; }
+      document.addEventListener('click', function (e) {
+        var t = e.target.closest('[data-lightbox]');
+        if (t) { e.preventDefault(); img.src = t.getAttribute('data-lightbox'); lb.classList.add('open'); return; }
+        if (e.target === lb || e.target.classList.contains('dn-lb-x')) close();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    })();
   </script>
 </body>
 </html>

@@ -18,6 +18,7 @@ import { adminGroupRoutes } from './admin/groups.js'
 import { adminStatusRoutes } from './admin/status.js'
 import { adminShopRoutes } from './admin/shop.js'
 import { adminCampaignRoutes } from './admin/campaigns.js'
+import { adminGpuRoutes } from './admin/gpu.js'
 import { shopRoutes } from './modules/shop/routes.js'
 import { notifyRoutes } from './modules/notify/routes.js'
 
@@ -59,6 +60,30 @@ export function buildApp() {
           const g = (t: string) => parts.find((x) => x.type === t)?.value ?? '00'
           return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`
         })
+        // Compact Nairobi time: "25 Nov, 18:00" — with the year only when it
+        // isn't the current year ("25 Nov 2025, 18:00").
+        env.addFilter('dtshort', (v) => {
+          if (!v) return ''
+          const d = new Date(v as string)
+          if (isNaN(d.getTime())) return ''
+          const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Africa/Nairobi',
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          }).formatToParts(d)
+          const g = (t: string) => parts.find((x) => x.type === t)?.value ?? ''
+          const nowYear = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Nairobi', year: 'numeric' }).format(new Date())
+          const yr = g('year') === nowYear ? '' : ` ${g('year')}`
+          return `${g('day')} ${g('month')}${yr}, ${g('hour')}:${g('minute')}`
+        })
+        // Nairobi HH:MM only — for "· Paid 18:00" when it's the same day.
+        env.addFilter('timeHM', (v) => {
+          if (!v) return ''
+          const d = new Date(v as string)
+          return isNaN(d.getTime())
+            ? ''
+            : d.toLocaleTimeString('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', minute: '2-digit' })
+        })
       },
     },
   })
@@ -71,6 +96,7 @@ export function buildApp() {
   app.register(adminStatusRoutes)
   app.register(adminShopRoutes)
   app.register(adminCampaignRoutes)
+  app.register(adminGpuRoutes)
   app.register(shopRoutes)
   app.register(notifyRoutes)
 

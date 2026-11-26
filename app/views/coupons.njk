@@ -28,27 +28,39 @@
 </form>
 
 {% if coupons.length %}
-<div style="overflow-x:auto" class="e-card">
-  <table class="e-table">
-    <thead><tr><th>Code</th><th>% off</th><th>Used</th><th>Expires</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for c in coupons %}
-      <tr>
-        <td style="font-weight:500">{{ c.code }}</td>
-        <td>{{ c.percent }}%</td>
-        <td>{{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}</td>
-        <td>{% if c.expires_at %}{{ c.expires_at | date }}{% else %}—{% endif %}</td>
-        <td><span class="e-tag" style="{% if c.active %}background:var(--accent);color:#fff{% else %}background:var(--panel);color:var(--muted){% endif %}">{{ 'active' if c.active else 'off' }}</span></td>
-        <td style="text-align:right">
+<div style="display:flex;flex-direction:column;gap:12px">
+  {% for c in coupons %}
+  <div class="e-card dn-row" style="display:flex;gap:14px;padding:14px;align-items:flex-start">
+    <div style="flex:1 1 auto;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:500;font-size:15px;letter-spacing:.02em">{{ c.code }}</span>
+        <span class="e-tag" style="background:var(--panel);color:var(--ink)">{{ c.percent }}% off</span>
+        <span class="e-tag" style="{% if c.active %}background:var(--accent);color:#fff{% else %}background:var(--panel);color:var(--muted){% endif %}">{{ 'active' if c.active else 'off' }}</span>
+        {% if c.expires_at %}<span class="e-tag" style="background:#f3dcd3;color:#7a1f2b">ends {{ c.expires_at | date }}</span>{% endif %}
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
           <form method="post" action="/admin/coupons/{{ c.id }}/toggle">
             <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
-            <button class="e-btn">{{ 'Deactivate' if c.active else 'Activate' }}</button>
+            <button class="dn-icon {{ 'on' if c.active }}" title="{{ 'Active — click to turn off' if c.active else 'Off — click to activate' }}" aria-label="Toggle coupon">⏻</button>
           </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          <div class="dn-kebab">
+            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+            <div class="dn-menu">
+              <button type="button" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText('{{ c.code }}')">Copy code</button>
+              <form method="post" action="/admin/coupons/{{ c.id }}/toggle">
+                <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+                <button>{{ 'Deactivate' if c.active else 'Activate' }}</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="e-muted" style="font-size:13px;margin:8px 0 0">
+        Used {{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}
+        {% if not c.expires_at %} · no expiry{% endif %}
+      </p>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <p class="e-muted e-card" style="font-size:14px">No coupons yet. Create one above — e.g. a Christmas code at 10% off.</p>

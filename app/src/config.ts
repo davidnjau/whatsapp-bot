@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizePhone } from './lib/phone.js'
 
 const Env = z.object({
   NODE_ENV: z.string().default('production'),
@@ -37,6 +38,8 @@ const Env = z.object({
   ADMIN_PASSWORD: z.string().min(1),
   ADMIN_API_TOKEN: z.string().min(1),
   SESSION_SECRET: z.string().min(1),
+  // Phones (any format) that get admin access after a normal customer login.
+  ADMIN_PHONES: z.string().default(''),
 
   SHOP_RESERVE_MINUTES: z.coerce.number().default(3),
   SHOP_STYLIST_PRICE: z.coerce.number().default(50),
@@ -53,6 +56,9 @@ const Env = z.object({
   // RunPod digitization worker (AI ingest). Dormant until the endpoint is set.
   RUNPOD_ENDPOINT: z.string().default(''),
   RUNPOD_API_KEY: z.string().default(''),
+  // Separate account-scoped key (billing:read + account:read) for the GPU
+  // dashboard. Never sent to the browser; endpoint key can't read billing.
+  RUNPOD_BILLING_KEY: z.string().default(''),
   INGEST_CATEGORY: z.string().default('dress'),
 
   SEND_MIN_DELAY_SECONDS: z.coerce.number().default(3),
@@ -105,6 +111,11 @@ export const config = {
   adminPassword: env.ADMIN_PASSWORD,
   adminApiToken: env.ADMIN_API_TOKEN,
   sessionSecret: env.SESSION_SECRET,
+  adminPhones: new Set(
+    env.ADMIN_PHONES.split(',')
+      .map((p) => normalizePhone(p))
+      .filter((p): p is string => !!p),
+  ),
 
   shopReserveMinutes: env.SHOP_RESERVE_MINUTES,
   stylistPrice: env.SHOP_STYLIST_PRICE,
@@ -120,6 +131,7 @@ export const config = {
   },
   runpodEndpoint: env.RUNPOD_ENDPOINT,
   runpodApiKey: env.RUNPOD_API_KEY,
+  runpodBillingKey: env.RUNPOD_BILLING_KEY,
   ingestCategory: env.INGEST_CATEGORY,
 
   sendMinDelaySeconds: env.SEND_MIN_DELAY_SECONDS,

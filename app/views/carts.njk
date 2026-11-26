@@ -1,22 +1,46 @@
 {% extends "layout.njk" %}
-{% block title %}Carts — WhatsApp Bot{% endblock %}
+{% block title %}Abandoned carts — Dress Nation Admin{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between">
-  <h1 class="text-lg font-semibold">Active carts (last 7 days)</h1>
-  <a href="/admin/orders" class="text-sm text-emerald-700 underline">Orders →</a>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:8px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
+    <h1 class="e-h1" style="margin:0">Abandoned carts</h1>
+  </div>
+  <a href="/admin/orders" class="e-btn">Orders →</a>
 </div>
-<div class="bg-white rounded-xl shadow divide-y text-sm">
+<p class="e-muted" style="font-size:13px;margin:0 0 20px">Bags added in the last 7 days that never checked out — these are not orders.</p>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+<div style="display:flex;flex-direction:column;gap:12px">
   {% for c in carts %}
-  <div class="p-4">
-    <p class="text-xs text-gray-400">{{ c.updated_at }} · cart {{ c.cart_id | truncate(8, true, '') }}…</p>
-    <ul class="mt-1">
+  <div class="e-card" style="padding:14px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      {% if c.customer_name or c.customer_phone %}
+      <span style="font-weight:500">{{ c.customer_name or c.customer_phone }}</span>
+      {% if c.customer_name and c.customer_phone %}<span class="e-muted" style="font-size:13px">{{ c.customer_phone }}</span>{% endif %}
+      {% else %}
+      <span class="e-tag" style="background:var(--panel);color:var(--muted)">anonymous</span>
+      {% endif %}
+      <span class="e-muted" style="font-size:12px;margin-left:auto">{{ c.updated_at | dtshort }} · cart {{ c.cart_id | truncate(8, true, '') }}…</span>
+    </div>
+    <ul style="list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px">
       {% for i in c.items %}
-      <li>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} (SIZE {{ i.size }}){% endif %} — Ksh {{ i.price_ksh }}</li>
+      <li style="font-size:14px">{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} · size {{ i.size }}{% endif %} — Ksh {{ i.price_ksh }}</li>
       {% endfor %}
     </ul>
+    {% if c.customer_phone %}
+    <form method="post" action="/admin/carts/{{ c.cart_id }}/message" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"
+          onsubmit="var b=this.querySelector('[name=body]');if(!b.value.trim()){return false}this.querySelector('button').disabled=true">
+      <input name="body" class="e-input" style="flex:1 1 220px;min-width:0" placeholder="Nudge {{ c.customer_name or 'them' }} on WhatsApp…" required>
+      <button class="e-btn e-btn-olive">Message customer</button>
+    </form>
+    {% else %}
+    <p class="e-muted" style="font-size:12px;margin:10px 0 0">No contact on file — shopper wasn't logged in, so there's no one to message.</p>
+    {% endif %}
   </div>
   {% else %}
-  <p class="p-4 text-gray-500">No active carts.</p>
+  <p class="e-muted e-card" style="font-size:14px">No abandoned carts in the last 7 days.</p>
   {% endfor %}
 </div>
 {% endblock %}

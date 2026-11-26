@@ -557,7 +557,12 @@ app.addEventListener('input',e=>{
 });
 app.addEventListener('change',e=>{if(e.target.id==='fagree'){S.form.agree=e.target.checked;const b=document.getElementById('toPay');if(b)b.disabled=!canPay()}
   if(e.target.name==='styCh'){const p=document.getElementById('styPhone');if(p)p.style.display=styChannel()==='whatsapp'?'block':'none';}});
-app.addEventListener('submit',e=>{e.preventDefault();if(canPay())location.hash='payment'});
+// Save the checkout number onto the cart so an abandoned checkout is reachable.
+let _lastContact='';
+function saveCartContact(){const p=(S.form.phone||'').trim();if(!phoneOk(p)||p===_lastContact)return;_lastContact=p;
+  fetch('/shop/api/cart/contact',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone:p})}).catch(()=>{});}
+app.addEventListener('focusout',e=>{if(e.target.id==='fphone')saveCartContact();});
+app.addEventListener('submit',e=>{e.preventDefault();if(canPay()){saveCartContact();location.hash='payment'}});
 
 /* ---------- init: load the live catalogue, then boot ---------- */
 async function loadCatalogue(){
