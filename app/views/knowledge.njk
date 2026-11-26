@@ -1,18 +1,97 @@
-{% extends "layout.njk" %}
-{% block title %}Knowledge — WhatsApp Bot{% endblock %}
-{% block content %}
-<h1 class="text-lg font-semibold">Knowledge base</h1>
-<p class="text-sm text-gray-500">
-  <code>menu.yaml</code> drives the menu bot; the <code>.md</code> files are the AI assistant's
-  only source of truth.
-</p>
-<div class="bg-white rounded-xl shadow divide-y">
-  {% for f in files %}
-  <a href="/admin/knowledge/{{ f | urlencode }}" class="block p-4 hover:bg-gray-50 font-mono text-sm">
-    {{ f }}
-  </a>
-  {% else %}
-  <p class="p-4 text-sm text-gray-500">No knowledge files found.</p>
-  {% endfor %}
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/knowledge.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM5 13v8h14v-8M10 21v-5h4v5"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M8 10h8M8 14h5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-olist" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 4v4M3 8h2M3 14c0-1 2-1.5 2 0s-2 2-2 3h2"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M10 4v16"/></symbol>
+    <symbol id="i-indent" viewBox="0 0 24 24"><path d="M3 6h18M11 12h10M11 18h10M3 10l4 3-4 3"/></symbol>
+    <symbol id="i-outdent" viewBox="0 0 24 24"><path d="M3 6h18M11 12h10M11 18h10M7 10l-4 3 4 3"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+      <a class="nav-link" href="/admin">Overview</a>
+      <p class="nav-group">Shop</p>
+      <a class="nav-link" href="/admin/catalogue">Dresses</a>
+      <a class="nav-link" href="/admin/orders">Orders</a>
+      <a class="nav-link" href="/admin/coupons">Coupons</a>
+      <a class="nav-link" href="/admin/campaigns">Campaigns</a>
+      <a class="nav-link" href="/admin/carts">Carts</a>
+      <a class="nav-link" href="/shop" target="_blank" rel="noopener">View shop <svg class="icon"><use href="#i-ext"/></svg></a>
+      <p class="nav-group">GPU &amp; ingest</p>
+      <a class="nav-link" href="/admin/gpu">Spend &amp; health</a>
+      <p class="nav-group">Bot</p>
+      <a class="nav-link" href="/admin/chats">Chats</a>
+      <a class="nav-link" href="/admin/knowledge" aria-current="page">Knowledge</a>
+      <a class="nav-link" href="/admin/groups">Groups</a>
+      <a class="nav-link" href="/admin/status">Status</a>
+      <a class="nav-link" href="/admin/notify">Notify</a>
+      <a class="nav-link" href="/admin/templates">Templates</a>
+      <a class="nav-link" href="/admin/contacts">Contacts</a>
+    </aside>
+
+    <main class="content">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+        <svg class="icon"><use href="#i-menu"/></svg>
+      </button>
+      <div id="app"></div>
+    </main>
+  </div>
+
+  <div class="savebar" id="savebar" role="region" aria-label="Save changes">
+    <span class="status" id="saveStatus">Unsaved changes</span>
+    <div class="actions">
+      <button type="button" class="btn-ghost" id="discardBtn">Discard</button>
+      <button type="button" class="btn-primary" id="saveBtn">Save changes</button>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer" aria-labelledby="drawerTitle" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawerTitle">business.md</h2>
+        <p>This is the file the bot reads. It's written for you when you save.</p>
+      </div>
+      <button type="button" class="icon-btn" id="drawerClose" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+    <pre id="drawerCode"></pre>
+    <div class="drawer-foot">
+      <button type="button" class="btn-outline" id="copyFile"><svg class="icon"><use href="#i-copy"/></svg>Copy</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span><button type="button" hidden>Undo</button></div>
+
+  <script>window.SEED = {{ seedJson | safe }};</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <script src="/static/knowledge.js"></script>
+</body>
+</html>

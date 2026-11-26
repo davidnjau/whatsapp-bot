@@ -3,8 +3,7 @@ import { z } from 'zod'
 import { query } from '../db.js'
 import { setBotPaused } from '../modules/support/handoff.js'
 import {
-  isValidKnowledgeFileName,
-  listKnowledgeFiles,
+  KNOWN_KNOWLEDGE_FILES,
   readKnowledgeFile,
   writeKnowledgeFile,
 } from '../modules/support/knowledge.js'
@@ -103,42 +102,27 @@ export const adminSupportRoutes: FastifyPluginAsync = async (app) => {
   })
 
   app.get('/admin/knowledge', async (_req, reply) => {
-    const files = await listKnowledgeFiles()
-    return reply.view('knowledge.njk', { authed: true, files })
-  })
-
-  app.get<{ Params: { name: string } }>('/admin/knowledge/:name', async (req, reply) => {
-    if (!isValidKnowledgeFileName(req.params.name)) return reply.callNotFound()
-    const content = await readKnowledgeFile(req.params.name)
-    return reply.view('knowledge_edit.njk', {
-      authed: true,
-      name: req.params.name,
-      content,
-      error: null,
-      saved: false,
-    })
+    // The friendly editor loads the three files' current contents from here.
+    const seed: Record<string, string> = {}
+    for (const name of KNOWN_KNOWLEDGE_FILES) {
+      seed[name] = await readKnowledgeFile(name).catch(() => '')
+    }
+    // Inline-script-safe: escape < so the JSON can't break out of <script>.
+    const seedJson = JSON.stringify(seed).replace(/</g, '\\u003c')
+    return reply.view('knowledge.njk', { authed: true, seedJson })
   })
 
   app.post<{ Params: { name: string } }>('/admin/knowledge/:name', async (req, reply) => {
-    if (!isValidKnowledgeFileName(req.params.name)) return reply.callNotFound()
+    const name = req.params.name
+    if (!(KNOWN_KNOWLEDGE_FILES as readonly string[]).includes(name)) {
+      return reply.code(400).send({ ok: false, error: 'Unknown file.' })
+    }
     const body = z.object({ content: z.string() }).parse(req.body ?? {})
     try {
-      await writeKnowledgeFile(req.params.name, body.content)
+      await writeKnowledgeFile(name, body.content)
+      return reply.send({ ok: true })
     } catch (err) {
-      return reply.view('knowledge_edit.njk', {
-        authed: true,
-        name: req.params.name,
-        content: body.content,
-        error: (err as Error).message,
-        saved: false,
-      })
+      return reply.code(400).send({ ok: false, error: (err as Error).message })
     }
-    return reply.view('knowledge_edit.njk', {
-      authed: true,
-      name: req.params.name,
-      content: body.content,
-      error: null,
-      saved: true,
-    })
   })
 }
