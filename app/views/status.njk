@@ -123,6 +123,10 @@
     .chip.posted{background:var(--status-soft);color:var(--status)}
     .chip.scheduled,.chip.daily{background:var(--info-soft);color:var(--info)}
     .chip.failed{background:color-mix(in oklch,var(--destructive) 12%,var(--card));color:var(--destructive)}
+    .chip.expired{background:var(--sand);color:var(--muted-foreground)}
+    .chips{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .pager{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:16px}
+    .filter.on{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
     .icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--input);cursor:pointer;transition:all .2s var(--ease-soft)}
     .icon-btn:hover{border-color:var(--destructive);color:var(--destructive)}
     .empty{padding:28px;text-align:center;color:var(--muted-foreground);font-size:14px}
@@ -282,11 +286,6 @@
           <section class="card">
             <div class="history-head">
               <h2>History</h2>
-              <div class="filters" role="group" aria-label="Filter history">
-                <button type="button" class="filter" data-filter="all" aria-pressed="true">All</button>
-                <button type="button" class="filter" data-filter="scheduled" aria-pressed="false">Scheduled</button>
-                <button type="button" class="filter" data-filter="posted" aria-pressed="false">Posted</button>
-              </div>
             </div>
             <ul class="history" id="history">
               {# scheduled & recurring definitions first #}
@@ -303,20 +302,33 @@
               {% endfor %}
               {# posted / failed history #}
               {% for h in history %}
-              <li class="item" data-group="posted">
-                <span class="thumb" style="{% if h.payload.input.type == 'text' and h.payload.input.backgroundColor %}background:{{ h.payload.input.backgroundColor }}{% endif %}">{% if h.payload.input.type == 'text' %}Aa{% else %}<svg class="icon"><use href="#i-{{ 'video' if h.payload.input.type == 'video' else 'image' }}"/></svg>{% endif %}</span>
+              <li class="item">
+                <span class="thumb" style="{% if h.payload.input.type == 'text' and h.payload.input.backgroundColor %}background:{{ h.payload.input.backgroundColor }}{% endif %}">{% if h._thumb %}<img src="{{ h._thumb }}" alt="">{% elif h.payload.input.type == 'text' %}Aa{% else %}<svg class="icon"><use href="#i-{{ 'video' if h.payload.input.type == 'video' else 'image' }}"/></svg>{% endif %}</span>
                 <div class="main">
-                  <div class="title">{% if h.payload.input.text %}{{ h.payload.input.text }}{% elif h.payload.input.caption %}{{ h.payload.input.caption }}{% else %}{{ h.payload.input.type | capitalize }} status{% endif %}</div>
+                  <div class="title">{% if h.payload.input.caption %}{{ h.payload.input.caption }}{% elif h.payload.input.text %}{{ h.payload.input.text }}{% else %}{{ h.payload.input.type | capitalize }} status{% endif %}</div>
                   <div class="when-txt">{{ h.payload.input.type | capitalize }} · {{ h.created_at | dtshort }}{% if h.error %} · <span style="color:var(--destructive)">{{ h.error | truncate(50) }}</span>{% endif %}</div>
                 </div>
-                <span class="chip {{ 'failed' if h.status == 'failed' else 'posted' }}">{{ 'Failed' if h.status == 'failed' else 'Posted' }}</span>
+                <span class="chips">
+                  <span class="chip {{ 'failed' if h.status == 'failed' else 'posted' }}">{{ 'Failed' if h.status == 'failed' else 'Posted' }}</span>
+                  {% if h._expired and h.status != 'failed' %}<span class="chip expired">Expired</span>{% endif %}
+                </span>
                 {% if h.waha_message_id %}
                 <form method="post" action="/admin/status/delete"><input type="hidden" name="sendId" value="{{ h.id }}"><button type="submit" class="icon-btn" title="Delete" aria-label="Delete status"><svg class="icon"><use href="#i-trash"/></svg></button></form>
                 {% else %}<span></span>{% endif %}
               </li>
               {% endfor %}
             </ul>
-            <p class="empty" id="historyEmpty" {{ 'hidden' if definitions.length or history.length }}>Nothing here yet.</p>
+            {% if not definitions.length and not history.length %}<p class="empty">Nothing here yet.</p>{% endif %}
+            {% if histTotalPages > 1 %}
+            <div class="pager">
+              {% if histPage > 1 %}<a href="/admin/status?page={{ histPage - 1 }}" class="filter">← Prev</a>{% endif %}
+              {% for n in range(1, histTotalPages + 1) %}
+              <a href="/admin/status?page={{ n }}" class="filter {{ 'on' if n == histPage }}">{{ n }}</a>
+              {% endfor %}
+              {% if histPage < histTotalPages %}<a href="/admin/status?page={{ histPage + 1 }}" class="filter">Next →</a>{% endif %}
+            </div>
+            {% endif %}
+            <p class="hint" style="text-align:center;margin-top:10px">{% if histTotal %}{{ histTotal }} status{{ 'es' if histTotal != 1 }}{% if histTotalPages > 1 %} · page {{ histPage }} of {{ histTotalPages }}{% endif %}{% endif %}</p>
           </section>
         </form>
 
@@ -442,15 +454,6 @@
       else ok = ok && (!!$("#mediaIdInput").value || !!$("#fileUrl").value.trim()) && caption.length<=MAX;
       $("#postBtn").disabled = !ok;
     }
-
-    // History filters
-    $$(".filter").forEach(f => f.addEventListener("click", () => {
-      state.filter = f.dataset.filter;
-      $$(".filter").forEach(x => x.setAttribute("aria-pressed", String(x===f)));
-      let shown = 0;
-      $$("#history .item").forEach(li => { const v = state.filter==="all" || li.dataset.group===state.filter; li.hidden = !v; if (v) shown++; });
-      $("#historyEmpty").hidden = shown>0;
-    }));
 
     // Mobile sidebar
     const sb=$("#sidebar"), mb=$("#menuBtn");
