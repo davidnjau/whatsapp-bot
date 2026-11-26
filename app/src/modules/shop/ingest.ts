@@ -35,6 +35,12 @@ export async function runIngest(productId: number): Promise<void> {
     category: config.ingestCategory,
   })
 
+  // Replace any prior AI-generated gallery images so re-running enrichment
+  // doesn't pile up duplicate cutout/studio/poster sets (keeps real photos).
+  await query(`DELETE FROM product_media WHERE product_id = $1 AND kind IN ('cutout', 'studio', 'poster')`, [
+    product.id,
+  ])
+
   // Attach the generated gallery images (base64 in the response).
   let pos = 100
   for (const [field, kind] of [
