@@ -122,14 +122,33 @@ def ingest_product(inp: dict) -> dict:
     cutout, studio = run_birefnet(img)
 
     sizes = ", ".join(inp.get("available_sizes") or []) or "unspecified"
+    # Shop-confirmed facts the model must respect exactly (colour / size / fabric
+    # are locked by the admin — never re-guess or contradict them).
+    locked = []
+    if (inp.get("colour") or "").strip():
+        locked.append(f'colour is "{inp["colour"].strip()}"')
+    if (inp.get("fabric") or "").strip():
+        locked.append(f'fabric is "{inp["fabric"].strip()}"')
+    if sizes != "unspecified":
+        locked.append(f"available sizes are {sizes}")
+    facts = (
+        "The shop has CONFIRMED the following and they are AUTHORITATIVE — use them "
+        "exactly in every field and do NOT describe a different colour, pattern, "
+        "fabric, material or size: " + "; ".join(locked) + ".\n"
+        if locked else ""
+    )
     system = (
         "You are a senior fashion e-commerce merchandiser and copywriter for a "
-        "Kenyan women's boutique. You write warm, honest, persuasive catalogue copy."
+        "Kenyan women's boutique. You write warm, honest, persuasive catalogue copy. "
+        "When the shop confirms a colour, fabric or size, you treat it as ground "
+        "truth and never contradict it, even if the photo looks different."
     )
     user = (
         f"Analyse this {inp.get('category', 'dress')} photo. "
         f"Price: {inp.get('price', 'unknown')}. Available sizes: {sizes}.\n"
-        "Respond with ONLY a JSON object, no prose, with exactly these keys:\n"
+        + facts +
+        "Respond with ONLY a JSON object, no prose, with exactly these keys "
+        "(echo the confirmed colour/fabric above when provided):\n"
         "{\n"
         '  "title": "catchy e-commerce product title",\n'
         '  "whatsapp_description": "clean persuasive bulleted copy for WhatsApp Business '

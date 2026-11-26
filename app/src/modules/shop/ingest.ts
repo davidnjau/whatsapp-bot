@@ -28,6 +28,10 @@ export async function runIngest(productId: number): Promise<void> {
     product_id: product.id,
     price: product.price_ksh ? `Ksh ${product.price_ksh.toLocaleString('en-KE')}` : '',
     available_sizes: sizes,
+    // Locked facts — the worker grounds its copy on these and must not change
+    // colour/size/fabric (see the UPDATE below, which never overwrites them).
+    colour: product.colour ?? '',
+    fabric: product.fabric ?? '',
     category: config.ingestCategory,
   })
 
@@ -50,7 +54,11 @@ export async function runIngest(productId: number): Promise<void> {
   await query(
     `UPDATE products SET
        title = COALESCE(NULLIF($2, ''), title),
-       fabric = $3, colour = $4, length_desc = $5,
+       -- colour, size and fabric are locked: keep any value already set,
+       -- only fill from AI when the admin left them blank. size is never touched.
+       fabric = COALESCE(NULLIF(fabric, ''), $3),
+       colour = COALESCE(NULLIF(colour, ''), $4),
+       length_desc = $5,
        short_desc = $6, long_desc = $7, social_caption = $8,
        occasions = $9::jsonb, silhouette = $10, stretch_level = $11, fit_notes = $12,
        embedding = $13::jsonb, ai_ingested_at = now(), needs_review = true
