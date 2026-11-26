@@ -7,6 +7,7 @@ import {
   importProductImage,
   listAwaitingEnrichment,
   listCatalogue,
+  markEnrichQueued,
   setAiSkipped,
   publishAllDrafts,
   publishProduct,
@@ -75,6 +76,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
       products: rows,
       counts,
       awaiting,
+      enrichingCount: awaiting.filter((a) => a.enriching).length,
       ingestConfigured: ingestConfigured(),
       filter: q.filter,
       search: q.search ?? '',
@@ -185,8 +187,10 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
 
   // Queue an AI digitization run (dormant if the worker isn't configured).
   app.post<{ Params: { id: string } }>('/admin/catalogue/:id/ingest', async (req, reply) => {
-    await setAiSkipped(Number(req.params.id), false) // re-including a skipped one
-    await enqueueIngest(Number(req.params.id))
+    const id = Number(req.params.id)
+    await setAiSkipped(id, false) // re-including a skipped one
+    await markEnrichQueued([id])
+    await enqueueIngest(id)
     const msg = ingestConfigured()
       ? 'AI enrichment queued - the dress will update shortly, then review it.'
       : 'Queued, but the AI worker is not configured yet (set RUNPOD_ENDPOINT).'
@@ -197,6 +201,7 @@ export const adminShopRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: { ids?: string | string[] } }>('/admin/catalogue/enrich-batch', async (req, reply) => {
     const raw = req.body?.ids
     const ids = (Array.isArray(raw) ? raw : raw ? [raw] : []).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    await markEnrichQueued(ids)
     for (const id of ids) {
       await setAiSkipped(id, false)
       await enqueueIngest(id)

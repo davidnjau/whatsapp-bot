@@ -213,19 +213,29 @@ export async function updateProduct(
 }
 
 // Uploads not yet AI-enriched and not excluded — the "awaiting enrichment" queue.
+// `enriching` = a run was queued recently and hasn't finished (a 10-min window
+// so a failed/stalled job eventually falls back to a normal, retryable tile).
 export async function listAwaitingEnrichment(): Promise<
-  Array<{ id: number; title: string | null; size: string | null }>
+  Array<{ id: number; title: string | null; size: string | null; enriching: boolean }>
 > {
-  const res = await query<{ id: number; title: string | null; size: string | null }>(
-    `SELECT id, title, size FROM products
+  const res = await query<{ id: number; title: string | null; size: string | null; enriching: boolean }>(
+    `SELECT id, title, size,
+            (ai_enqueued_at IS NOT NULL AND ai_enqueued_at > now() - interval '10 minutes') AS enriching
+     FROM products
      WHERE ai_ingested_at IS NULL AND NOT ai_skipped AND status NOT IN ('archived', 'sold')
      ORDER BY created_at DESC LIMIT 60`,
   )
-  return res.rows.map((r) => ({ ...r, id: Number(r.id) }))
+  return res.rows.map((r) => ({ ...r, id: Number(r.id), enriching: !!r.enriching }))
 }
 
 export async function setAiSkipped(id: number, skipped: boolean): Promise<void> {
   await query('UPDATE products SET ai_skipped = $2 WHERE id = $1', [id, skipped])
+}
+
+// Stamp products as queued for enrichment so the UI can show "enriching…".
+export async function markEnrichQueued(ids: number[]): Promise<void> {
+  if (!ids.length) return
+  await query('UPDATE products SET ai_enqueued_at = now() WHERE id = ANY($1::bigint[])', [ids])
 }
 
 // Full detail edit (owner review of AI-filled or hand-typed content).

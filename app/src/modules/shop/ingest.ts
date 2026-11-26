@@ -68,7 +68,7 @@ export async function runIngest(productId: number): Promise<void> {
        length_desc = $5,
        short_desc = $6, long_desc = $7, social_caption = $8,
        occasions = $9::jsonb, silhouette = $10, stretch_level = $11, fit_notes = $12,
-       embedding = $13::jsonb, ai_ingested_at = now(), needs_review = true
+       embedding = $13::jsonb, ai_ingested_at = now(), ai_enqueued_at = NULL, needs_review = true
      WHERE id = $1`,
     [
       product.id,

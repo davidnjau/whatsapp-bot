@@ -36,35 +36,59 @@
 {% endif %}
 
 {% if awaiting.length %}
+<style>
+  .enrich-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(43,39,36,.85);color:#fff;font-size:12px;font-weight:500;padding:6px 11px;border-radius:999px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .enrich-dot{width:7px;height:7px;border-radius:50%;background:#f3c14b;animation:enrichPulse 1s ease-in-out infinite}
+  @keyframes enrichPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+  .enrich-spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;display:inline-block;animation:enrichSpin .8s linear infinite}
+  @keyframes enrichSpin{to{transform:rotate(360deg)}}
+</style>
 <div class="e-card" style="margin-bottom:20px">
   <div style="margin-bottom:12px">
     <h2 style="margin:0;font-size:18px;font-weight:500">✨ Awaiting AI enrichment ({{ awaiting.length }})</h2>
+    {% if enrichingCount %}
+    <p class="e-muted" style="font-size:13px;margin:6px 0 0;display:flex;align-items:center;gap:8px">
+      <span class="enrich-spin"></span> Enriching {{ enrichingCount }} photo{{ 's' if enrichingCount != 1 }}… up to a minute or two each. This page refreshes on its own.
+    </p>
+    {% else %}
     <p class="e-muted" style="font-size:13px;margin:4px 0 0">Tick the photos to enrich with AI, or exclude ones you'll handle by hand.{% if not ingestConfigured %} <span style="color:#7a1f2b">AI worker not configured yet.</span>{% endif %}</p>
+    {% endif %}
   </div>
   <form method="post" action="/admin/catalogue/enrich-batch">
     <div style="display:flex;flex-wrap:wrap;gap:12px">
       {% for p in awaiting %}
       <div style="width:116px">
-        <label style="display:block;position:relative;cursor:pointer">
+        <label style="display:block;position:relative;cursor:{{ 'default' if p.enriching else 'pointer' }}">
+          {% if p.enriching %}
+          <span class="enrich-badge"><span class="enrich-dot"></span>Enriching…</span>
+          {% else %}
           <input type="checkbox" name="ids" value="{{ p.id }}" checked
                  style="position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:1;accent-color:var(--accent)">
-          <img src="/shop/img/{{ p.id }}" style="width:116px;height:150px;object-fit:cover;border-radius:10px;background:var(--panel);display:block" alt="">
+          {% endif %}
+          <img src="/shop/img/{{ p.id }}" alt=""
+               style="width:116px;height:150px;object-fit:cover;border-radius:10px;background:var(--panel);display:block{{ ';opacity:.5' if p.enriching }}">
         </label>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px">
           <span class="e-muted" style="font-size:12px">#{{ p.id }}{% if p.size %} · {{ p.size }}{% endif %}</span>
+          {% if not p.enriching %}
           <button type="submit" formaction="/admin/catalogue/{{ p.id }}/skip-ai" formnovalidate
                   title="Exclude from AI" style="background:none;border:0;cursor:pointer;color:var(--muted);text-decoration:underline;font-size:12px">exclude</button>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
     </div>
     <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-      <button class="e-btn e-btn-olive">✨ Enrich selected with AI</button>
+      <button class="e-btn e-btn-olive"{% if enrichingCount %} disabled style="opacity:.5;cursor:not-allowed"{% endif %}
+              onclick="var b=this;setTimeout(function(){b.disabled=true;b.textContent='⏳ Queuing…'},0)">✨ Enrich selected with AI</button>
+      {% if not enrichingCount %}
       <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=true});return false" class="e-muted" style="font-size:13px">Select all</a>
       <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=false});return false" class="e-muted" style="font-size:13px">Select none</a>
+      {% endif %}
     </div>
   </form>
 </div>
+{% if enrichingCount %}<script>setTimeout(function(){location.reload()},5000)</script>{% endif %}
 {% endif %}
 
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
