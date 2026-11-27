@@ -15,11 +15,15 @@
     .side{flex:1 1 220px;max-width:260px;background:var(--panel);padding:24px 16px;display:flex;flex-direction:column;gap:22px}
     .brand{font-size:18px;letter-spacing:.06em;padding:0 10px;text-decoration:none;color:var(--ink)}
     .brand span{color:var(--accent)}
-    .side nav{display:flex;flex-direction:column;gap:2px}
-    .side .grp{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 10px 4px}
-    .side a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--ink);text-decoration:none}
-    .side a:hover{background:#e7ddd1}
-    .side a[aria-current=page]{background:var(--ink);color:#fff}
+    .nav-root{display:flex;flex-direction:column;gap:2px}
+    .nav-grp{display:flex;flex-direction:column;gap:2px}
+    .nav-group{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 10px 4px;display:flex;align-items:center;cursor:pointer;list-style:none}
+    .nav-group::-webkit-details-marker{display:none}
+    .nav-chev{margin-left:auto;width:13px;height:13px;flex:none;opacity:.65;transition:transform .2s cubic-bezier(.22,1,.36,1)}
+    .nav-grp:not([open]) .nav-chev{transform:rotate(-90deg)}
+    .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--ink);text-decoration:none}
+    .nav-link:hover{background:#e7ddd1}
+    .nav-link[aria-current=page]{background:var(--ink);color:#fff}
     .main{flex:999 1 560px;min-width:0;padding:28px 28px 64px}
     /* Editorial components (used by redesigned pages) */
     .e-eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
@@ -74,26 +78,7 @@
     <aside class="side">
       <a href="/admin" class="brand">DRESS NATION <span>~254</span></a>
       {% if authed %}
-      <nav aria-label="Admin">
-        <a href="/admin">Overview</a>
-        <div class="grp">Shop</div>
-        <a href="/admin/catalogue">Dresses</a>
-        <a href="/admin/orders">Orders</a>
-        <a href="/admin/coupons">Coupons</a>
-        <a href="/admin/campaigns">Campaigns</a>
-        <a href="/admin/carts">Carts</a>
-        <a href="/shop" target="_blank">View shop ↗</a>
-        <div class="grp">GPU &amp; Ingest</div>
-        <a href="/admin/gpu">Spend &amp; health</a>
-        <div class="grp">Bot</div>
-        <a href="/admin/chats">Chats</a>
-        <a href="/admin/knowledge">Knowledge</a>
-        <a href="/admin/groups">Groups</a>
-        <a href="/admin/status">Status</a>
-        <a href="/admin/notify">Notify</a>
-        <a href="/admin/templates">Templates</a>
-        <a href="/admin/contacts">Contacts</a>
-      </nav>
+      {% include "_nav.njk" %}
       <form method="post" action="/admin/logout" style="margin-top:auto;padding:0 10px">
         <button class="e-btn" style="width:100%">Log out</button>
       </form>
@@ -106,17 +91,7 @@
   </div>
   <div class="dn-lb" id="dnLb" role="dialog" aria-modal="true"><button class="dn-lb-x" aria-label="Close">&times;</button><img src="" alt="Full photo"></div>
   <script>
-    (function () {
-      var here = location.pathname;
-      var best = null, bestLen = -1;
-      document.querySelectorAll('.side nav a').forEach(function (a) {
-        var p = a.getAttribute('href');
-        if (!p || p.charAt(0) !== '/') return;
-        if ((here === p || (p !== '/admin' && here.indexOf(p) === 0)) && p.length > bestLen) { best = a; bestLen = p.length; }
-        if (here === '/admin' && p === '/admin') { best = a; bestLen = 99; }
-      });
-      if (best) best.setAttribute('aria-current', 'page');
-    })();
+    // Active page + collapsible groups are handled inside _nav.njk.
     // Mobile sidebar toggle
     (function () {
       var t = document.getElementById('sideToggle'), side = document.querySelector('.side');

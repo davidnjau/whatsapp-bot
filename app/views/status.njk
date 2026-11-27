@@ -31,7 +31,12 @@
     .sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--sand);padding:28px 16px;display:flex;flex-direction:column;gap:2px}
     .sidebar .brand{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;padding:0 12px 24px;text-decoration:none}
     .sidebar .brand span{color:var(--muted-foreground);font-weight:300;letter-spacing:.04em}
-    .nav-group{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500;padding:20px 12px 6px}
+    .nav-group{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500;padding:20px 12px 6px;display:flex;align-items:center;cursor:pointer;list-style:none}
+    .nav-group::-webkit-details-marker{display:none}
+    .nav-root{display:flex;flex-direction:column;gap:2px}
+    .nav-grp{display:flex;flex-direction:column;gap:2px}
+    .nav-chev{margin-left:auto;width:13px;height:13px;flex:none;opacity:.6;transition:transform .2s var(--ease-soft)}
+    .nav-grp:not([open]) .nav-chev{transform:rotate(-90deg)}
     .nav-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;font-size:15px;text-decoration:none;transition:background .2s var(--ease-soft)}
     .nav-link:hover{background:color-mix(in oklch,var(--card) 70%,transparent)}
     .nav-link[aria-current="page"]{background:var(--charcoal);color:var(--ivory)}
@@ -156,24 +161,7 @@
   <div class="shell">
     <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
       <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
-      <a class="nav-link" href="/admin">Overview</a>
-      <p class="nav-group">Shop</p>
-      <a class="nav-link" href="/admin/catalogue">Dresses</a>
-      <a class="nav-link" href="/admin/orders">Orders</a>
-      <a class="nav-link" href="/admin/coupons">Coupons</a>
-      <a class="nav-link" href="/admin/campaigns">Campaigns</a>
-      <a class="nav-link" href="/admin/carts">Carts</a>
-      <a class="nav-link" href="/shop" target="_blank" rel="noopener">View shop <svg class="icon"><use href="#i-ext"/></svg></a>
-      <p class="nav-group">GPU &amp; ingest</p>
-      <a class="nav-link" href="/admin/gpu">Spend &amp; health</a>
-      <p class="nav-group">Bot</p>
-      <a class="nav-link" href="/admin/chats">Chats</a>
-      <a class="nav-link" href="/admin/knowledge">Knowledge</a>
-      <a class="nav-link" href="/admin/groups">Groups</a>
-      <a class="nav-link" href="/admin/status" aria-current="page">Status</a>
-      <a class="nav-link" href="/admin/notify">Notify</a>
-      <a class="nav-link" href="/admin/templates">Templates</a>
-      <a class="nav-link" href="/admin/contacts">Contacts</a>
+      {% include "_nav.njk" %}
     </aside>
 
     <main class="content">

@@ -24,24 +24,7 @@
   <div class="shell">
     <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
       <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
-      <a class="nav-link" href="/admin">Overview</a>
-      <p class="nav-group">Shop</p>
-      <a class="nav-link" href="/admin/catalogue">Dresses</a>
-      <a class="nav-link" href="/admin/orders">Orders</a>
-      <a class="nav-link" href="/admin/coupons">Coupons</a>
-      <a class="nav-link" href="/admin/campaigns">Campaigns</a>
-      <a class="nav-link" href="/admin/carts">Carts</a>
-      <a class="nav-link" href="/shop" target="_blank" rel="noopener">View shop <svg class="icon"><use href="#i-ext"/></svg></a>
-      <p class="nav-group">GPU &amp; ingest</p>
-      <a class="nav-link" href="/admin/gpu">Spend &amp; health</a>
-      <p class="nav-group">Bot</p>
-      <a class="nav-link" href="/admin/chats">Chats</a>
-      <a class="nav-link" href="/admin/knowledge">Knowledge</a>
-      <a class="nav-link" href="/admin/groups">Groups</a>
-      <a class="nav-link" href="/admin/status">Status</a>
-      <a class="nav-link" href="/admin/notify">Notify</a>
-      <a class="nav-link" href="/admin/templates" aria-current="page">Templates</a>
-      <a class="nav-link" href="/admin/contacts">Contacts</a>
+      {% include "_nav.njk" %}
     </aside>
 
     <main class="content">
