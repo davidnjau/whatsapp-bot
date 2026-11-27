@@ -3,31 +3,120 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}WhatsApp Bot{% endblock %}</title>
+  <title>{% block title %}Dress Nation — Admin{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#fff;--panel:#f1ebe4;--ink:#2b2724;--muted:#6b625b;--line:#e5ddd4;--accent:#5c6534}
+    body{font-family:Inter,system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg)}
+    .admin{display:flex;flex-wrap:wrap;min-height:100vh}
+    .side{flex:1 1 220px;max-width:260px;background:var(--panel);padding:24px 16px;display:flex;flex-direction:column;gap:22px}
+    .brand{font-size:18px;letter-spacing:.06em;padding:0 10px;text-decoration:none;color:var(--ink)}
+    .brand span{color:var(--accent)}
+    .nav-root{display:flex;flex-direction:column;gap:2px}
+    .nav-grp{display:flex;flex-direction:column;gap:2px}
+    .nav-group{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:12px 10px 4px;display:flex;align-items:center;cursor:pointer;list-style:none}
+    .nav-group::-webkit-details-marker{display:none}
+    .nav-chev{margin-left:auto;width:13px;height:13px;flex:none;opacity:.65;transition:transform .2s cubic-bezier(.22,1,.36,1)}
+    .nav-grp:not([open]) .nav-chev{transform:rotate(-90deg)}
+    .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:14px;color:var(--ink);text-decoration:none}
+    .nav-link:hover{background:#e7ddd1}
+    .nav-link[aria-current=page]{background:var(--ink);color:#fff}
+    .main{flex:999 1 560px;min-width:0;padding:28px 28px 64px}
+    /* Editorial components (used by redesigned pages) */
+    .e-eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+    .e-h1{font-size:40px;font-weight:500;letter-spacing:-.03em}
+    .e-card{border:1px solid var(--line);border-radius:14px;padding:20px;background:#fff;box-shadow:0 8px 20px -16px rgba(43,39,36,.3)}
+    .e-pill{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--ink);background:#fff;color:var(--ink);font-size:13px;cursor:pointer;text-decoration:none}
+    .e-pill.on{background:var(--ink);color:#fff}
+    .e-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--ink);background:#fff;color:var(--ink);font:500 13px Inter,sans-serif;cursor:pointer;text-decoration:none}
+    .e-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .e-btn-dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .e-btn-dark:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+    .e-btn-olive{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .e-input{font:400 14px Inter,sans-serif;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+    .e-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(92,101,52,.15)}
+    .e-table{width:100%;border-collapse:collapse;font-size:14px}
+    .e-table th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 14px;border-bottom:1px solid var(--line)}
+    .e-table td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+    .e-tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+    .e-muted{color:var(--muted)}
+    /* Compact catalogue rows + icon actions + kebab menu */
+    .dn-icon{width:40px;height:40px;flex:none;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;padding:0}
+    .dn-icon:hover{border-color:var(--accent);color:var(--accent)}
+    .dn-icon.on{background:var(--ink);color:#f3c14b;border-color:var(--ink)}
+    .dn-icon.ai{border-color:var(--accent);color:var(--accent)}
+    .dn-kebab{position:relative}
+    .dn-menu{position:absolute;right:0;top:46px;z-index:20;min-width:200px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 36px -14px rgba(43,39,36,.4);padding:6px;display:none;flex-direction:column}
+    .dn-menu.open{display:flex}
+    .dn-menu a,.dn-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;background:none;font:400 14px Inter,sans-serif;color:var(--ink);border-radius:8px;cursor:pointer;text-decoration:none}
+    .dn-menu a:hover,.dn-menu button:hover{background:var(--panel)}
+    .dn-menu .danger{color:#7a1f2b}
+    .dn-lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+    .dn-lb.open{display:flex}
+    .dn-lb img{max-width:95vw;max-height:92vh;border-radius:8px;object-fit:contain}
+    .dn-lb-x{position:absolute;top:14px;right:20px;color:#fff;font-size:36px;line-height:1;cursor:pointer;background:none;border:0}
+    [data-lightbox]{cursor:zoom-in}
+    .sidetoggle{display:none}
+    @media(max-width:760px){
+      .side{display:none;position:fixed;inset:0 auto 0 0;z-index:40;max-width:280px;width:82%}
+      .side.open{display:flex;box-shadow:0 0 50px rgba(0,0,0,.35)}
+      .sidetoggle{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px 14px;font:500 14px Inter,sans-serif;cursor:pointer}
+      .main{padding:18px 14px 56px}
+      .e-h1{font-size:30px}
+      /* Stack the inline title / size / price editor on phones */
+      .dn-edit{flex-direction:column;align-items:stretch}
+      .dn-edit input{width:100%!important}
+      .dn-edit .dn-icon{align-self:flex-end}
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <nav class="bg-emerald-700 text-white px-4 py-3 flex items-center justify-between">
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <a href="/admin" class="font-semibold">WhatsApp Bot</a>
+<body>
+  <div class="admin">
+    <aside class="side">
+      <a href="/admin" class="brand">DRESS NATION <span>~254</span></a>
       {% if authed %}
-      <a href="/admin/chats" class="text-sm hover:underline">Chats</a>
-      <a href="/admin/knowledge" class="text-sm hover:underline">Knowledge</a>
-      <a href="/admin/groups" class="text-sm hover:underline">Groups</a>
-      <a href="/admin/status" class="text-sm hover:underline">Status</a>
-      <a href="/admin/notify" class="text-sm hover:underline">Notify</a>
-      <a href="/admin/templates" class="text-sm hover:underline">Templates</a>
-      <a href="/admin/contacts" class="text-sm hover:underline">Contacts</a>
+      {% include "_nav.njk" %}
+      <form method="post" action="/admin/logout" style="margin-top:auto;padding:0 10px">
+        <button class="e-btn" style="width:100%">Log out</button>
+      </form>
       {% endif %}
-    </div>
-    {% if authed %}
-    <form method="post" action="/admin/logout">
-      <button class="text-sm underline">Log out</button>
-    </form>
-    {% endif %}
-  </nav>
-  <main class="max-w-3xl mx-auto p-4 space-y-4">
-    {% block content %}{% endblock %}
-  </main>
+    </aside>
+    <main class="main">
+      {% if authed %}<button class="sidetoggle" id="sideToggle" aria-label="Menu">☰ Menu</button>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <div class="dn-lb" id="dnLb" role="dialog" aria-modal="true"><button class="dn-lb-x" aria-label="Close">&times;</button><img src="" alt="Full photo"></div>
+  <script>
+    // Active page + collapsible groups are handled inside _nav.njk.
+    // Mobile sidebar toggle
+    (function () {
+      var t = document.getElementById('sideToggle'), side = document.querySelector('.side');
+      if (t && side) t.addEventListener('click', function (e) { e.stopPropagation(); side.classList.toggle('open'); });
+    })();
+    // Per-dress "⋯" dropdown menus (open one, close the rest / on outside click)
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.dn-kebab > button');
+      document.querySelectorAll('.dn-menu.open').forEach(function (m) {
+        if (!btn || m !== btn.nextElementSibling) m.classList.remove('open');
+      });
+      if (btn) { btn.nextElementSibling.classList.toggle('open'); e.stopPropagation(); }
+    });
+    // Photo lightbox: click any [data-lightbox] to open; ✕ / backdrop / Esc to close.
+    (function () {
+      var lb = document.getElementById('dnLb'); if (!lb) return;
+      var img = lb.querySelector('img');
+      function close() { lb.classList.remove('open'); img.src = ''; }
+      document.addEventListener('click', function (e) {
+        var t = e.target.closest('[data-lightbox]');
+        if (t) { e.preventDefault(); img.src = t.getAttribute('data-lightbox'); lb.classList.add('open'); return; }
+        if (e.target === lb || e.target.classList.contains('dn-lb-x')) close();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    })();
+  </script>
 </body>
 </html>

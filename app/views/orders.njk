@@ -1,0 +1,163 @@
+{% extends "layout.njk" %}
+{% block title %}Orders — Dress Nation Admin{% endblock %}
+{% block content %}
+{% set qs = 'status=' + group + '&q=' + (search | urlencode) + '&since=' + since + '&page=' + page %}
+{% set base = '/admin/orders?status=' + group + '&q=' + (search | urlencode) + '&since=' + since %}
+
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
+    <h1 class="e-h1" style="margin:0">Orders</h1>
+  </div>
+  <a href="/admin/carts" class="e-btn">Abandoned carts{% if abandoned %} ({{ abandoned }}){% endif %} →</a>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+<!-- status chips -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+  {% for f in [
+    { k: 'all', l: 'All' }, { k: 'not_handled', l: 'Not handled' }, { k: 'packed', l: 'Packed' },
+    { k: 'dropped', l: 'Dropped' }, { k: 'cancelled', l: 'Cancelled' }
+  ] %}
+  <a href="/admin/orders?status={{ f.k }}{% if since != 'all' %}&since={{ since }}{% endif %}{% if search %}&q={{ search | urlencode }}{% endif %}"
+     class="e-pill {{ 'on' if group == f.k }}">{{ f.l }} ({{ counts[f.k] }})</a>
+  {% endfor %}
+</div>
+
+<!-- search -->
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+  <form method="get" action="/admin/orders" style="display:flex;gap:8px;flex:1 1 280px;min-width:0">
+    <input type="hidden" name="status" value="{{ group }}">
+    <input type="hidden" name="since" value="{{ since }}">
+    <input name="q" value="{{ search }}" placeholder="Order no (DN-10005), name, phone or town" class="e-input" style="flex:1 1 auto;min-width:0">
+    <button class="e-btn">Search</button>
+    {% if search %}<a href="/admin/orders?status={{ group }}&since={{ since }}" class="e-btn">Clear</a>{% endif %}
+  </form>
+</div>
+
+<!-- date range -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+  {% for s in [
+    { k: 'all', l: 'Any time' }, { k: '1w', l: '1 week' }, { k: '2w', l: '2 weeks' },
+    { k: '3w', l: '3 weeks' }, { k: '4w', l: '4 weeks' }, { k: '1mo', l: '1 month' }, { k: 'older', l: 'Over a month' }
+  ] %}
+  <a href="/admin/orders?status={{ group }}&since={{ s.k }}{% if search %}&q={{ search | urlencode }}{% endif %}"
+     class="e-pill {{ 'on' if since == s.k }}" style="min-height:32px;font-size:12px">{{ s.l }}</a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+  {% for o in orders %}
+  <div class="e-card dn-row order-card" style="padding:14px;cursor:pointer" data-href="/admin/orders/{{ o.id }}?back={{ qs | urlencode }}">
+    <div style="display:flex;gap:14px;align-items:flex-start">
+      {% if o.items.length %}
+      <img src="/shop/img/{{ o.items[0].product_id }}" data-lightbox="/shop/img/{{ o.items[0].product_id }}"
+           style="width:64px;height:84px;object-fit:cover;border-radius:10px;background:var(--panel);flex:none" alt="">
+      {% endif %}
+      <div style="flex:1 1 auto;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <a href="/admin/orders/{{ o.id }}?back={{ qs | urlencode }}" style="font-weight:500;text-decoration:none;color:var(--ink)">{{ o.dn }}</a>
+          <span>· {{ o.customer_name }}</span>
+          <span class="pricetag" style="font-weight:500">Ksh {{ o.total_ksh }}</span>
+          {# coloured status badge #}
+          {% set st = o.status %}
+          <span class="e-tag" style="
+            {% if st == 'paid' %}background:#dbeafe;color:#1e40af
+            {% elif st == 'packed' %}background:#f1e4cf;color:#6b4e1e
+            {% elif st in ['dropped','collected'] %}background:var(--accent);color:#fff
+            {% elif st == 'cancelled' %}background:#f3dcd3;color:#7a1f2b
+            {% else %}background:var(--panel);color:var(--muted){% endif %}">{{ st | replace('_',' ') | upper }}</span>
+          {% if o.paid_at %}<span class="e-tag" style="background:#eef0e4;color:var(--accent)">PAID</span>{% endif %}
+
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            {% if o.status == 'paid' %}
+            <form method="post" action="/admin/orders/{{ o.id }}/packed" style="display:flex;gap:6px;align-items:center">
+              <input type="hidden" name="ret" value="/admin/orders?{{ qs }}">
+              <label class="e-muted" title="Also WhatsApp the customer a 'your order is packed' message" style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" name="notify" value="1"> notify</label>
+              <button class="e-btn">Mark packed</button>
+            </form>
+            {% elif o.status == 'packed' %}
+            <form method="post" action="/admin/orders/{{ o.id }}/dropped" style="display:flex;gap:6px">
+              <input type="hidden" name="ret" value="/admin/orders?{{ qs }}">
+              <input name="packageCode" placeholder="Package code" class="e-input" style="width:120px" required>
+              <button class="e-btn e-btn-dark">Dropped at Pickup Mtaani</button>
+            </form>
+            {% elif o.status == 'dropped' %}
+            <form method="post" action="/admin/orders/{{ o.id }}/collected">
+              <input type="hidden" name="ret" value="/admin/orders?{{ qs }}">
+              <button class="e-btn">Mark collected</button>
+            </form>
+            {% endif %}
+            <div class="dn-kebab">
+              <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+              <div class="dn-menu">
+                <a href="/admin/orders/{{ o.id }}?back={{ qs | urlencode }}">View details</a>
+                <a href="/admin/orders/{{ o.id }}?back={{ qs | urlencode }}#message">Message client</a>
+                <button type="button" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText('{{ o.phone }}')">Copy phone number</button>
+                {% if o.items.length %}<a href="/shop/p/{{ o.items[0].product_id }}" target="_blank">View dress on shop ↗</a>{% endif %}
+                {% if o.status in ['pending_payment','paid','packed'] %}
+                <form method="post" action="/admin/orders/{{ o.id }}/cancel" onsubmit="return confirm('Cancel {{ o.dn }}? Dresses return to the catalogue.')">
+                  <input type="hidden" name="ret" value="/admin/orders?{{ qs }}">
+                  <button class="danger">Cancel order</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ul style="list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:4px">
+          {% for i in o.items %}
+          <li style="font-size:13px;color:var(--muted)">
+            {{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} · size {{ i.size }}{% endif %} — Ksh {{ i.price_ksh }}
+            {% if i.conflict_orders.length %}<span style="color:#7a1f2b"> · ⚠ also in {% for c in i.conflict_orders %}#{{ c.id }} ({{ c.status }}){% if not loop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+
+        <p class="e-muted" style="font-size:13px;margin:8px 0 0">
+          📞 {{ o.phone }} · 📍 {{ o.town }} · 🚚 {{ o.delivery_option }} — {{ o.delivery_location }}
+          {% if o.discount_ksh %} · 🎟 {{ o.coupon_code }} (−Ksh {{ o.discount_ksh }}){% endif %}
+          {% if o.package_code %} · 📦 <span style="font-family:ui-monospace,monospace">{{ o.package_code }}</span>{% endif %}
+        </p>
+        <p class="e-muted" style="font-size:12px;margin:4px 0 0">
+          Ordered {{ o.created_at | dtshort }}{% if o.paid_at %} · Paid {% if o.paid_same_day %}{{ o.paid_at | timeHM }}{% else %}{{ o.paid_at | dtshort }}{% endif %}{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="e-muted e-card" style="font-size:14px">
+    {% if group == 'all' %}No orders yet.
+    {% elif group == 'not_handled' %}No orders waiting to be handled. 🎉
+    {% elif group == 'packed' %}No packed orders.
+    {% elif group == 'dropped' %}No dropped orders.
+    {% else %}No cancelled orders.{% endif %}
+  </p>
+  {% endfor %}
+</div>
+
+{% if totalPages > 1 %}
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:24px">
+  {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}" class="e-pill" style="min-height:36px">← Prev</a>{% endif %}
+  {% for n in range(1, totalPages + 1) %}
+  <a href="{{ base }}&page={{ n }}" class="e-pill {{ 'on' if n == page }}" style="min-height:36px;min-width:42px;justify-content:center">{{ n }}</a>
+  {% endfor %}
+  {% if page < totalPages %}<a href="{{ base }}&page={{ page + 1 }}" class="e-pill" style="min-height:36px">Next →</a>{% endif %}
+</div>
+{% endif %}
+<p class="e-muted" style="text-align:center;font-size:12px;margin-top:10px">
+  {% if total %}Showing {{ (page - 1) * 20 + 1 }}–{{ (page - 1) * 20 + orders.length }} of {{ total }}{% else %}0 orders{% endif %}
+</p>
+<script>
+  // Click anywhere on an order card to open its detail — except on the interactive
+  // bits (buttons, links, forms, inputs, the kebab menu, the lightbox thumbnail).
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest('.order-card');
+    if (!card) return;
+    if (e.target.closest('a,button,input,label,select,textarea,form,[data-lightbox],.dn-kebab,.dn-menu')) return;
+    window.location.href = card.getAttribute('data-href');
+  });
+</script>
+{% endblock %}

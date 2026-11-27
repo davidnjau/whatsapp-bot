@@ -1,0 +1,32 @@
+{% extends "shop_layout.njk" %}
+{% block title %}Pay for order #{{ order.id }} — {{ brand.name }} {{ brand.suffix }}{% endblock %}
+{% block content %}
+<section class="wrap" style="padding:28px 24px 72px;max-width:680px">
+  <p class="eyebrow">Order #{{ order.id }}</p>
+  <h1 style="margin-top:10px;font-size:clamp(30px,4vw,44px)">Confirm & <span style="color:var(--accent)">pay</span></h1>
+  {% if error %}<p style="margin-top:12px;color:#7a1f2b;background:#f7ece9;border-radius:10px;padding:12px 14px;font-size:14px">{{ error }}</p>{% endif %}
+
+  <div style="border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:20px">
+    {% for i in items %}
+    <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+      <span>{{ i.title or ('Dress #' + i.product_id) }}{% if i.size %} · size {{ i.size }}{% endif %}</span>
+      <span class="pricetag">Ksh {{ i.price_ksh }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:16px">
+      <span>Total</span><span class="pricetag" style="font-size:24px">{{ totalFmt }}</span>
+    </div>
+    <p class="muted" style="margin:14px 0 0;font-size:13px;line-height:1.6">
+      Delivery: {{ order.delivery_option }} — {{ order.delivery_location }}, {{ order.town }}.
+      The delivery fee is confirmed separately by the shop. {{ brand.policyNote }}
+    </p>
+  </div>
+
+  <form method="post" action="/shop/pay/{{ order.id }}/{{ order.access_token }}"
+        style="border:1px solid var(--ink);border-radius:16px;padding:24px;margin-top:20px;text-align:center">
+    <p class="muted" style="margin:0 0 16px;font-size:14px">Pay with M-Pesa to lock in your pieces. We then WhatsApp {{ order.phone }} with your tracking code.</p>
+    <button class="btn btn-dark" style="width:100%;padding:16px">Pay {{ totalFmt }} with M-Pesa</button>
+    <p class="muted" style="margin:14px 0 0;font-size:12px">By paying you confirm: no refunds, no exchanges.</p>
+  </form>
+</section>
+{% endblock %}

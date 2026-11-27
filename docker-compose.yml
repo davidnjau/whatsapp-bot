@@ -33,13 +33,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # Self-hosted S3-compatible object store for media (used when
+  # STORAGE_BACKEND=minio). SeaweedFS by default because MinIO's public images
+  # are now gated; the app's S3 client is standard and works with either.
+  # Internal only — no published ports. Override with S3_IMAGE if desired.
+  s3:
+    image: ${S3_IMAGE:-chrislusf/seaweedfs:latest}
+    restart: unless-stopped
+    command: server -s3 -s3.port=9000 -dir=/data
+    volumes:
+      - s3_data:/data
+
   app:
     build: ./app
     restart: unless-stopped
     env_file: .env
+    environment:
+      # INBOX_DIR in .env is the HOST path (volume source below); inside the
+      # container the mount target is always /app/inbox.
+      INBOX_DIR: /app/inbox
     volumes:
       - ./knowledge:/app/knowledge
       - media_data:/app/media
+      # Drop-folder for new product photos (set INBOX_DIR in .env)
+      - ${INBOX_DIR:-./inbox}:/app/inbox:ro
     ports:
       # Bound to localhost only — on a VPS, Caddy (on the same host) proxies
       # HTTPS traffic to it. Nothing else is reachable from outside.
@@ -54,3 +71,4 @@ volumes:
   waha_sessions:
   pg_data:
   media_data:
+  s3_data:

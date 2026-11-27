@@ -93,6 +93,7 @@ export async function handleMessageAny(evt: WahaEvent) {
   }
 
   const contact = await upsertContact(chatId, senderNameOf(msg), senderPhoneOf(msg, chatId))
+  const contactPhone = contact.phone ?? senderPhoneOf(msg, chatId)
 
   const keyword = parseOptKeyword(msg.body)
   if (keyword === 'stop' && contact.opted_in) {
@@ -118,7 +119,13 @@ export async function handleMessageAny(evt: WahaEvent) {
     return
   }
 
-  await handleInboundDm({ chatId, body: msg.body ?? '', hasMedia: msg.hasMedia ?? false })
+  await handleInboundDm({
+    chatId,
+    body: msg.body ?? '',
+    hasMedia: msg.hasMedia ?? false,
+    contactName: contact.name,
+    contactPhone,
+  })
 }
 
 const AckPayload = z

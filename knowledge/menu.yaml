@@ -1,43 +1,91 @@
+# Shown once, on first contact, to let the customer pick a language.
+language_prompt: |
+  Habari! 👋 Choose a language / Chagua lugha:
+  1. English 🇬🇧
+  2. Kiswahili 🇰🇪
+  3. Mix / Mchanganyiko
+
+# `greeting` / `title` are the default (Mix). Optional `greetings:` and per-item
+# `titles:` give English (en) and Swahili (sw) versions used when the customer
+# picks that language.
 greeting: |
-  Karibu! Welcome to [BUSINESS NAME] 👋
+  Karibu Dress Nation ~254! 💃 Quality mtumba dresses, delivered countrywide
+  via Pickup Mtaani.
+greetings:
+  en: |
+    Welcome to Dress Nation ~254! 💃 Quality second-hand dresses, delivered
+    countrywide via Pickup Mtaani.
+  sw: |
+    Karibu Dress Nation ~254! 💃 Nguo bora za mtumba, tunatuma kote nchini
+    kupitia Pickup Mtaani.
 
 fallback: |
-  Sorry, I didn't quite get that. / Samahani, sijaelewa.
-  Reply with a number: / Jibu kwa nambari:
+  Samahani, sijaelewa vizuri. Reply with a number / Jibu kwa nambari:
+
+# Appended under the menu list. Reminds customers of the policy and how to
+# re-open the menu. Optional en/sw versions; base is Mix.
+menu_footer: |
+  ⚠️ No refunds / no exchanges — mtumba is sold as-is.
+  Reply "menu" anytime to see this list again.
+menu_footers:
+  en: |
+    ⚠️ No refunds / no exchanges — items sold as-is.
+    Reply "menu" anytime to see this list again.
+  sw: |
+    ⚠️ Hakuna refunds wala exchanges — mtumba inauzwa ilivyo.
+    Andika "menu" wakati wowote kuona orodha hii tena.
 
 after_hours: |
-  Thanks for your message! We are currently closed (Mon–Sat 08:00–18:00) and
-  will get back to you during business hours.
-  Asante kwa ujumbe wako! Kwa sasa tumefunga — tutakujibu saa za kazi.
+  Asante kwa ujumbe wako! Tuko offline kwa sasa — tutakujibu saa za kazi.
+  Thanks for your message! We're currently offline and will reply during
+  business hours.
 
 media_ack: |
-  Thanks for sending that! A member of our team will take a look shortly.
-  Asante! Mmoja wa timu yetu ataangalia hivi karibuni.
+  Nice pick! 😍 Let me confirm this dress is still available — a team member
+  will get back to you shortly. Kumbuka: hatuna refunds wala exchanges, so
+  feel free to ask for measurements or a video kwanza.
 
 menu:
   - key: "1"
-    title: "Prices / Bei"
-    keywords: [price, prices, cost, how much, bei, gharama, pesa ngapi, ngapi]
-    reply: |
-      [Fill in your prices here, e.g.:]
-      - Product A: KES 500
-      - Product B: KES 1,200
+    title: "🛍️ Shop dresses / Nunua dress"
+    titles: { en: "🛍️ Shop dresses", sw: "🛍️ Nunua nguo" }
+    keywords: [order, buy, available, iko, bado, nataka hii, niaje hii, how to order, kuagiza, shop, catalogue]
+    action: catalogue
 
   - key: "2"
-    title: "Delivery / Usafirishaji"
-    keywords: [delivery, deliver, shipping, send, tuma, usafirishaji, kufikisha, mtumbwi]
+    title: "🚚 Delivery & fees / Usafirishaji"
+    titles: { en: "🚚 Delivery & fees", sw: "🚚 Usafirishaji & gharama" }
+    keywords: [delivery, deliver, fee, pickup, mtaani, doorstep, usafirishaji, kufika, utafika, shipping]
     reply: |
-      [Fill in delivery info, e.g.:]
-      We deliver within Nairobi same-day (KES 200) and countrywide in 1–2 days.
+      We deliver countrywide via Pickup Mtaani 🇰🇪
+      • Agent pickup (cheapest) — collect at your nearest Pickup Mtaani agent
+      • Doorstep — rider delivers to your door
+      • Upcountry — via matatu SACCO/courier you choose (e.g. Easy Coach, 2NK)
+      Tuambie area/town yako na tutaconfirm the delivery fee. Delivery fee is
+      separate from the dress price.
 
   - key: "3"
-    title: "Location & hours / Mahali na saa"
-    keywords: [location, where, address, hours, open, close, mahali, wapi, saa, mko wapi]
+    title: "📦 Track my order / Kufuatilia order"
+    titles: { en: "📦 Track my order", sw: "📦 Fuatilia oda yangu" }
+    keywords: [track, tracking, package code, parcel, imefika, iko wapi, status ya order]
     reply: |
-      [Fill in your location and hours, e.g.:]
-      We are at [ADDRESS]. Open Mon–Sat 08:00–18:00.
+      Once we drop your dress with Pickup Mtaani, we send you a package code —
+      track it on the Pickup Mtaani website. Ikifika kwa agent, please collect
+      within 3 days (after that parcels are returned and can eventually be
+      disposed of). Open and check your parcel at the agent before leaving! 🙌
+
+  - key: "4"
+    title: "📋 Policies / Sheria za duka"
+    titles: { en: "📋 Policies", sw: "📋 Sheria za duka" }
+    keywords: [refund, exchange, return, kubadilisha, kurudisha, policy, sheria]
+    reply: |
+      Mtumba items are sold as they are: ❌ no refunds, ❌ no exchanges.
+      Ndio maana we encourage you to check the size against your measurements
+      and ask for close-up photos/video before paying. Honest descriptions
+      always — tell us if you want a condition check on any dress.
 
   - key: "0"
-    title: "Talk to a person / Ongea na mtu"
-    keywords: [human, agent, person, staff, someone, mtu, msaada, huduma kwa wateja]
+    title: "🙋 Talk to a person / Ongea na mtu"
+    titles: { en: "🙋 Talk to a person", sw: "🙋 Ongea na mtu" }
+    keywords: [human, agent, person, mtu, msaada, owner, mwenye duka, customer care]
     handoff: true

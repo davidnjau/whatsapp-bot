@@ -1,0 +1,66 @@
+{% extends "layout.njk" %}
+{% block title %}Campaigns — Dress Nation Admin{% endblock %}
+{% block content %}
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
+    <h1 class="e-h1" style="margin:0">Campaigns</h1>
+  </div>
+  <a href="/admin/campaigns/new" class="e-btn e-btn-dark">+ New campaign</a>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+{% if campaigns.length %}
+<div style="display:flex;flex-direction:column;gap:12px">
+  {% for c in campaigns %}
+  <div class="e-card dn-row" style="display:flex;gap:14px;align-items:flex-start;padding:14px">
+    <a href="/admin/campaigns/{{ c.id }}/edit" title="Edit / photo" style="flex:none">
+      <div style="width:84px;height:60px;border-radius:8px;overflow:hidden;background:var(--panel)">
+        {% if c.desktop_media_id %}<img src="/shop/media/{{ c.desktop_media_id }}" style="width:100%;height:100%;object-fit:cover" alt="">{% endif %}
+      </div>
+    </a>
+    <div style="flex:1 1 auto;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:500">{{ c.name }}</span>
+        <span class="e-tag" style="
+          {% if c._status == 'live' %}background:var(--accent);color:#fff
+          {% elif c._status == 'scheduled' %}background:#f1e4cf;color:#6b4e1e
+          {% elif c._status == 'ended' %}background:var(--panel);color:var(--muted)
+          {% else %}background:#e7ddd1;color:var(--muted){% endif %}">{{ c._status }}</span>
+        <span class="e-tag" style="background:var(--panel);color:var(--muted)">{{ 'photo' if c.banner_type == 'photo' else 'text' }}</span>
+        <span class="e-muted" style="font-size:12px">{{ c.starts_at | date }} → {{ c.ends_at | date }}</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <form method="post" action="/admin/campaigns/{{ c.id }}/toggle">
+            <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+            <button class="dn-icon {{ 'on' if c.active }}" title="{{ 'On — click to turn off' if c.active else 'Off — click to turn on' }}" aria-label="Toggle campaign">⏻</button>
+          </form>
+          <div class="dn-kebab">
+            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+            <div class="dn-menu">
+              <a href="/admin/campaigns/{{ c.id }}/edit">Edit / photo</a>
+              <a href="/admin/campaigns/{{ c.id }}/preview" target="_blank">Preview ↗</a>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/duplicate"><button>Duplicate</button></form>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/toggle">
+                <input type="hidden" name="active" value="{{ 'off' if c.active else 'on' }}">
+                <button>{{ 'Turn off' if c.active else 'Turn on' }}</button>
+              </form>
+              <form method="post" action="/admin/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.name }}? This cannot be undone.')"><button class="danger">Delete</button></form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form method="post" action="/admin/campaigns/{{ c.id }}/reuse" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span class="e-muted" style="font-size:12px">Reuse with new dates:</span>
+        <input type="datetime-local" name="starts" required class="e-input" style="font-size:12px">
+        <input type="datetime-local" name="ends" required class="e-input" style="font-size:12px">
+        <button class="e-btn" style="min-height:32px;font-size:12px">Copy</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="e-muted e-card" style="font-size:14px">No campaigns yet. Create a scheduled banner — e.g. a Christmas sale.</p>
+{% endif %}
+{% endblock %}

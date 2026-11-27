@@ -1,43 +1,130 @@
-{% extends "layout.njk" %}
-{% block title %}Send notification — WhatsApp Bot{% endblock %}
-{% block content %}
-<div class="flex items-center justify-between">
-  <h1 class="text-lg font-semibold">Send a notification</h1>
-  <a href="/admin/notifications" class="text-sm text-emerald-700 underline">View log →</a>
-</div>
-{% if error %}
-<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>
-{% endif %}
-{% if result %}
-<div class="text-sm text-emerald-800 bg-emerald-50 rounded-lg p-3">
-  <p class="font-medium">Queued ✓ (notification #{{ result.notificationId }})</p>
-  <p class="mt-1 whitespace-pre-wrap text-gray-700">{{ result.rendered }}</p>
-</div>
-{% endif %}
-<form method="post" action="/admin/notify" class="bg-white rounded-xl shadow p-4 space-y-3">
-  <label class="block text-sm">
-    Phone
-    <input name="phone" value="{{ form.phone or '' }}" placeholder="07XXXXXXXX or 2547XXXXXXXX"
-           class="mt-1 w-full border rounded-lg px-3 py-2" required>
-  </label>
-  <label class="block text-sm">
-    Template
-    <select name="template" class="mt-1 w-full border rounded-lg px-3 py-2">
-      {% for t in templates %}
-      <option value="{{ t.name }}" {% if form.template == t.name %}selected{% endif %}>{{ t.name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="block text-sm">
-    Variables (JSON)
-    <textarea name="variables" rows="4" class="mt-1 w-full border rounded-lg px-3 py-2 font-mono text-sm"
-              placeholder='{"name": "Alice", "order_id": "1234"}'>{{ form.variables or '{}' }}</textarea>
-  </label>
-  <label class="block text-sm">
-    Send at (optional — leave empty for now)
-    <input name="sendAt" type="datetime-local" value="{{ form.sendAt or '' }}"
-           class="mt-1 w-full border rounded-lg px-3 py-2">
-  </label>
-  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Queue message</button>
-</form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Send a notification — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/notify.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+      {% include "_nav.njk" %}
+    </aside>
+
+    <main class="content">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><svg class="icon"><use href="#i-menu"/></svg></button>
+
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Bot</p>
+          <h1>Send a notification</h1>
+          <p class="lede">Send one customer a WhatsApp update from a ready-made message: order confirmed, on the way, payment received.</p>
+        </div>
+        <div class="head-links">
+          <a class="btn-outline" href="/admin/templates"><svg class="icon"><use href="#i-file"/></svg>Templates</a>
+          <a class="btn-outline" href="/admin/notifications"><svg class="icon"><use href="#i-list"/></svg>Notification log</a>
+        </div>
+      </div>
+
+      <div class="layout">
+        <form class="form-col" id="notifyForm" method="post" action="/admin/notify" novalidate>
+          <input type="hidden" name="template" id="templateField" />
+          <input type="hidden" name="variables" id="variablesField" value="{}" />
+          <input type="hidden" name="phone" id="phoneField" />
+          <input type="hidden" name="sendAt" id="sendAtField" />
+
+          <section class="card">
+            <div class="card-head"><span class="step" id="step1">1</span><div><h2>Who is it for?</h2></div></div>
+            <div class="field">
+              <label for="phone">Customer's WhatsApp number</label>
+              <div class="prefix-wrap" id="phoneWrap"><span>🇰🇪</span><input id="phone" type="tel" inputmode="tel" autocomplete="off" placeholder="0712 345 678" aria-describedby="phoneMsg" /></div>
+              <span class="hint" id="phoneMsg">Any format works: 0712…, 254712… or +254 712…</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><span class="step" id="step2">2</span><div><h2>Which message?</h2></div></div>
+            <div class="templates" role="radiogroup" aria-label="Message" id="templates"></div>
+            <div id="varsWrap" hidden>
+              <p class="label" style="margin-top:22px">Fill in the details</p>
+              <div class="grid-2" id="vars"></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><span class="step done" id="step3">3</span><div><h2>When?</h2></div></div>
+            <div class="when" role="radiogroup" aria-label="When to send">
+              <label class="when-opt"><input type="radio" name="when" value="now" checked /><span>Send now</span><small>Goes out straight away</small></label>
+              <label class="when-opt"><input type="radio" name="when" value="later" /><span>Schedule</span><small>Pick a day and time</small></label>
+            </div>
+            <div class="grid-2" id="laterWrap" hidden>
+              <div class="field"><label for="sendDate">Day</label><input class="input" type="date" id="sendDate" /></div>
+              <div class="field"><label for="sendTime">Time (Nairobi)</label><input class="input" type="time" id="sendTime" value="09:00" /></div>
+            </div>
+            <span class="error" id="whenError" hidden></span>
+            <details class="tech"><summary>Technical details</summary><pre id="techOut"></pre></details>
+            <div class="form-actions">
+              <p class="summary" id="summary">Add a number and pick a message.</p>
+              <button type="submit" class="btn-primary" id="sendBtn" disabled><svg class="icon"><use href="#i-send"/></svg><span>Send message</span></button>
+            </div>
+          </section>
+        </form>
+
+        <aside class="side">
+          <div>
+            <span class="label">What the customer sees</span>
+            <div class="chat">
+              <div class="chat-head"><span class="avatar" id="avatar">?</span><div><span id="chatName">Customer</span><small id="chatNumber">No number yet</small></div></div>
+              <div class="chat-body">
+                <span class="day-pill" id="dayPill">Today</span>
+                <div class="bubble" id="bubble">Pick a message to see it here.</div>
+              </div>
+            </div>
+            <p class="preview-meta" id="previewMeta">Highlighted words come from the details you fill in.</p>
+          </div>
+          <div class="card">
+            <div class="recent-head"><h2>Recent</h2><a class="link" href="/admin/notifications">View all →</a></div>
+            <ul class="log" id="log"></ul>
+            <p class="empty" id="logEmpty" hidden>No notifications yet.</p>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-back" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-hidden="true">
+    <div class="modal">
+      <h2 id="confirmTitle">Send this message?</h2>
+      <dl><dt>To</dt><dd id="cTo"></dd><dt>Message</dt><dd id="cTpl"></dd><dt>When</dt><dd id="cWhen"></dd></dl>
+      <div class="msg" id="cMsg"></div>
+      <div class="actions">
+        <button type="button" class="btn-ghost" id="cCancel">Go back</button>
+        <button type="button" class="btn-primary" id="cOk"><svg class="icon"><use href="#i-send"/></svg><span>Yes, send</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span><button type="button" hidden>Undo</button></div>
+
+  <script>
+    window.TEMPLATES = {{ templatesJson | safe }};
+    window.NOTIFY_LOG = {{ logJson | safe }};
+    window.NOTIFY_FLASH = {{ flashJson | safe }};
+  </script>
+  <script src="/static/notify.js"></script>
+</body>
+</html>

@@ -6,13 +6,24 @@ import { enqueueSend } from '../../queue/index.js'
 import { generateAiReply, getProvider } from './ai.js'
 import { startHandoff, setBotPaused } from './handoff.js'
 import { isWithinBusinessHours } from './hours.js'
-import { loadMenu, matchMenuItem, menuList } from './menu.js'
+import {
+  greetingFor,
+  isMenuCommand,
+  loadMenu,
+  matchMenuItem,
+  menuMessage,
+  parseLanguageChoice,
+  type Lang,
+} from './menu.js'
 import { isAngry, parseStaffCommand, wantsHuman } from './triggers.js'
+import { abandonShopSession, handleShopMessage, sendCatalogueTo } from '../shop/chat.js'
 
 export interface InboundDm {
   chatId: string
   body: string
   hasMedia: boolean
+  contactName?: string | null
+  contactPhone?: string | null
 }
 
 // Staff commands typed from the business's own number inside a customer chat.
@@ -26,10 +37,11 @@ export async function handleOwnMessage(chatId: string, body: string) {
 export async function handleInboundDm(msg: InboundDm) {
   if (!config.botEnabled) return
 
-  const chat = await query<{ bot_paused: boolean; last_hours_notice_at: Date | null }>(
-    'SELECT bot_paused, last_hours_notice_at FROM chats WHERE chat_id = $1',
-    [msg.chatId],
-  )
+  const chat = await query<{
+    bot_paused: boolean
+    last_hours_notice_at: Date | null
+    language: string | null
+  }>('SELECT bot_paused, last_hours_notice_at, language FROM chats WHERE chat_id = $1', [msg.chatId])
   if (chat.rows[0]?.bot_paused) return
 
   const repliesLastHour = await query<{ count: string }>(
@@ -43,6 +55,40 @@ export async function handleInboundDm(msg: InboundDm) {
   }
 
   const menu = await loadMenu()
+
+  // First contact: let the customer pick a language before anything else.
+  let lang = (chat.rows[0]?.language as Lang | null) ?? null
+  if (!lang) {
+    const pick = parseLanguageChoice(msg.body)
+    if (!pick) {
+      await reply(msg.chatId, menu.language_prompt.trim())
+      return
+    }
+    await query('UPDATE chats SET language = $2 WHERE chat_id = $1', [msg.chatId, pick])
+    lang = pick
+    await reply(msg.chatId, menuMessage(menu, lang, greetingFor(menu, lang)))
+    return
+  }
+
+  // "menu" / "back" — abandon any active order and re-show the menu.
+  if (isMenuCommand(msg.body)) {
+    await abandonShopSession(msg.chatId)
+    await reply(msg.chatId, menuMessage(menu, lang))
+    return
+  }
+
+  // Shop ordering takes priority: an active order flow, or a buy/catalogue
+  // intent, is handled here and short-circuits the support bot. Works anytime
+  // (no business-hours gate) so customers can order 24/7.
+  if (!msg.hasMedia) {
+    const handled = await handleShopMessage(
+      msg.chatId,
+      msg.body,
+      msg.contactName ?? null,
+      msg.contactPhone ?? null,
+    )
+    if (handled) return
+  }
 
   // Outside business hours: send the hours message (at most every 6h per chat), then still answer.
   let prefix = ''
@@ -64,6 +110,13 @@ export async function handleInboundDm(msg: InboundDm) {
     return startHandoff(msg.chatId, wantsHuman(msg.body) ? 'customer asked for a human' : 'customer sounds upset')
   }
 
+  // A menu item can trigger the live catalogue (e.g. replying "1"), in both
+  // menu and AI modes.
+  const actionItem = matchMenuItem(menu, msg.body)
+  if (actionItem?.action === 'catalogue') {
+    return sendCatalogueTo(msg.chatId)
+  }
+
   const provider = getProvider()
   if (!provider) {
     // Menu/keyword mode
@@ -76,8 +129,8 @@ export async function handleInboundDm(msg: InboundDm) {
       [msg.chatId],
     )
     const isFirstContact = Number(inboundCount.rows[0].count) <= 1
-    const header = isFirstContact ? menu.greeting.trim() : menu.fallback.trim()
-    return reply(msg.chatId, `${prefix}${header}\n\n${menuList(menu)}`)
+    const header = isFirstContact ? greetingFor(menu, lang) : menu.fallback
+    return reply(msg.chatId, prefix + menuMessage(menu, lang, header))
   }
 
   // AI mode

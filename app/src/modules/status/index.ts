@@ -116,15 +116,23 @@ export interface StatusHistoryRow {
   status: string
   waha_message_id: string | null
   error: string | null
-  payload: { input?: StatusInput }
+  payload: { input?: StatusInput & { media_id?: number } }
   created_at: Date
   sent_at: Date | null
 }
 
-export async function listStatusHistory(): Promise<StatusHistoryRow[]> {
+export async function listStatusHistory(
+  page = 1,
+  limit = 20,
+): Promise<{ rows: StatusHistoryRow[]; total: number; page: number; totalPages: number }> {
+  const countRes = await query<{ c: string }>(`SELECT count(*) c FROM sends WHERE module = 'status'`)
+  const total = Number(countRes.rows[0]?.c ?? 0)
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  const p = Math.min(Math.max(1, page), totalPages)
   const res = await query<StatusHistoryRow>(
     `SELECT id, status, waha_message_id, error, payload, created_at, sent_at
-     FROM sends WHERE module = 'status' ORDER BY created_at DESC LIMIT 30`,
+     FROM sends WHERE module = 'status' ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+    [limit, (p - 1) * limit],
   )
-  return res.rows
+  return { rows: res.rows, total, page: p, totalPages }
 }

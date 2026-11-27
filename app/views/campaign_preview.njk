@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview — {{ name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/banner.css">
+<style>
+  body{margin:0;background:#2b2724;font-family:Jost,system-ui,sans-serif;color:#fff;padding:24px}
+  h1{font-weight:400;font-size:20px}
+  .frames{display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start;margin-top:20px}
+  .frame{background:#faf9f5;border-radius:16px;padding:18px;display:flex;align-items:center;justify-content:center}
+  .frame.desk{width:600px;max-width:100%;min-height:360px}
+  .frame.phone{width:360px;min-height:520px}
+  .frame .dnb-card{box-shadow:0 10px 30px -14px rgba(0,0,0,.4)}
+  .cap{font-size:13px;opacity:.7;margin-bottom:8px}
+</style>
+</head>
+<body>
+<h1>Preview — {{ name }} <a href="javascript:history.back()" style="color:#cdbfb2;font-size:14px;margin-left:12px">← back</a></h1>
+{% macro card(c) %}
+<div class="dnb-card {{ 'dnb-photo' if c.type == 'photo' }}" style="--dnb-bg:{{ c.bg }};--dnb-text:{{ c.text }}">
+  {% if c.desktop %}<picture>{% if c.mobile %}<source media="(max-width:600px)" srcset="{{ c.mobile }}">{% endif %}<img src="{{ c.desktop }}" alt="{{ c.alt }}"></picture>{% endif %}
+  {% if c.type != 'photo' %}
+  <div class="dnb-body">
+    {% if c.headline %}<h2>{{ c.headline }}</h2>{% endif %}
+    {% if c.subtext %}<p>{{ c.subtext }}</p>{% endif %}
+    {% if c.countdown %}<div class="dnb-count">Ends in 4d 11h 20m</div>{% endif %}
+    {% if c.buttonText and c.buttonLink %}<a class="dnb-btn" href="{{ c.buttonLink }}">{{ c.buttonText }}</a>{% endif %}
+  </div>
+  {% endif %}
+  <div class="dnb-controls"><button class="dnb-share">Share</button><button class="dnb-close">✕</button></div>
+</div>
+{% endmacro %}
+<div class="frames">
+  <div><div class="cap">Desktop</div><div class="frame desk">{{ card(c) }}</div></div>
+  <div><div class="cap">Phone</div><div class="frame phone">{{ card(c) }}</div></div>
+</div>
+</body>
+</html>

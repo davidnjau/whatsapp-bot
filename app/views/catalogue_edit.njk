@@ -1,0 +1,106 @@
+{% extends "layout.njk" %}
+{% block title %}Edit dress #{{ product.id }} — Dress Nation Admin{% endblock %}
+{% block content %}
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Dresses · review</p>
+    <h1 class="e-h1" style="margin:0">Dress #{{ product.id }}</h1>
+    <p class="e-muted" style="font-size:13px;margin:6px 0 0">Uploaded {{ product.created_at | date }}</p>
+  </div>
+  <a href="/admin/catalogue" class="e-btn">← Back to dresses</a>
+</div>
+
+{% if message %}<p style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">{{ message }}</p>{% endif %}
+
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+  <div style="flex:1 1 220px;max-width:280px">
+    <img src="/shop/img/{{ product.id }}" alt="" style="width:100%;border-radius:12px;background:var(--panel)">
+    <p class="e-muted" style="font-size:13px;margin-top:10px">
+      {% if product.ai_ingested_at %}✨ AI-enriched. Review and save.{% else %}Not yet AI-enriched.{% endif %}
+    </p>
+    <form method="post" action="/admin/catalogue/{{ product.id }}/ingest" style="margin-top:8px">
+      <button class="e-btn e-btn-olive" style="width:100%">✨ {{ 'Re-run' if product.ai_ingested_at else 'Enrich' }} with AI</button>
+    </form>
+    {% if not ingestConfigured %}<p class="e-muted" style="font-size:12px;margin-top:6px">Worker not configured yet — fields below can still be edited by hand.</p>{% endif %}
+  </div>
+
+  <form method="post" action="/admin/catalogue/{{ product.id }}/details" class="e-card" style="flex:999 1 420px;min-width:0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:2 1 160px;font-size:13px;color:var(--muted)">Title<input name="title" class="e-input" style="width:100%;margin-top:4px" value="{{ product.title or '' }}"></label>
+      <label style="flex:1 1 90px;font-size:13px;color:var(--muted)">Size 🔒<input name="size" class="e-input" style="width:100%;margin-top:4px" value="{{ product.size or '' }}"></label>
+      <label style="flex:1 1 90px;font-size:13px;color:var(--muted)">Price (Ksh)<input name="price" class="e-input" style="width:100%;margin-top:4px" value="{{ product.price_ksh or 1000 }}"></label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Fabric 🔒<input name="fabric" class="e-input" style="width:100%;margin-top:4px" value="{{ product.fabric or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Colour 🔒<input name="colour" class="e-input" style="width:100%;margin-top:4px" value="{{ product.colour or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Length<input name="length_desc" class="e-input" style="width:100%;margin-top:4px" value="{{ product.length_desc or '' }}"></label>
+    </div>
+    <p class="e-muted" style="font-size:12px;margin:-6px 0 0">🔒 Colour, Size &amp; Fabric are locked — set them from the real dress and AI enrichment will keep them, not overwrite them.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Silhouette<input name="silhouette" class="e-input" style="width:100%;margin-top:4px" value="{{ product.silhouette or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Stretch<input name="stretch_level" class="e-input" style="width:100%;margin-top:4px" value="{{ product.stretch_level or '' }}"></label>
+      <label style="flex:1 1 120px;font-size:13px;color:var(--muted)">Occasions (comma-separated)<input name="occasions" class="e-input" style="width:100%;margin-top:4px" value="{{ occasionsText }}"></label>
+    </div>
+    <label style="font-size:13px;color:var(--muted)">Short description (lead)
+      <textarea name="short_desc" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.short_desc or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">About this dress (long)
+      <textarea name="long_desc" rows="4" class="e-input" style="width:100%;margin-top:4px">{{ product.long_desc or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">Fit notes
+      <textarea name="fit_notes" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.fit_notes or '' }}</textarea></label>
+    <label style="font-size:13px;color:var(--muted)">Social caption
+      <textarea name="social_caption" rows="2" class="e-input" style="width:100%;margin-top:4px">{{ product.social_caption or '' }}</textarea></label>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="e-btn e-btn-dark">Save details</button>
+      <a href="/shop/p/{{ product.id }}" target="_blank" class="e-btn">Preview →</a>
+    </div>
+  </form>
+</div>
+
+<div class="e-card" style="margin-top:24px">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+    <h2 style="margin:0;font-size:20px;font-weight:500">Photos &amp; video</h2>
+    <span class="e-muted" style="font-size:13px">{{ media.length }} item(s){% if product.ai_ingested_at %} · includes AI-generated{% endif %}</span>
+  </div>
+
+  <form method="post" action="/admin/catalogue/{{ product.id }}/media/upload" enctype="multipart/form-data"
+        onsubmit="var b=this.querySelector('button');if(b){b.disabled=true;b.innerHTML='<span class=&quot;up-spin&quot;></span> Uploading…'}"
+        style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 20px">
+    <style>.up-spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;vertical-align:-2px;margin-right:4px;animation:upSpin .7s linear infinite}@keyframes upSpin{to{transform:rotate(360deg)}}</style>
+    <input type="file" name="files" accept="image/*,video/*" multiple required style="font-size:14px">
+    <label style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">Add as
+      <select name="kind" class="e-input" style="padding:8px 10px">
+        <option value="photo">Extra photo</option>
+        <option value="model">On a model</option>
+        <option value="mannequin">On the mannequin</option>
+      </select>
+    </label>
+    <button class="e-btn e-btn-olive">Add photos / videos</button>
+    <span class="e-muted" style="font-size:12px">Mark the model &amp; mannequin shots so the fitting room shows them right. Videos are detected automatically.</span>
+  </form>
+
+  {% if media.length %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">
+    {% for m in media %}
+    <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)">
+      <div style="aspect-ratio:3/4;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        {% if m.kind == 'video' %}
+        <video src="/shop/video/{{ m.media_id }}"{% if m.poster_media_id %} poster="/shop/media/{{ m.poster_media_id }}"{% endif %} muted playsinline controls style="width:100%;height:100%;object-fit:cover"></video>
+        {% else %}
+        <img src="/shop/media/{{ m.media_id }}" alt="" style="width:100%;height:100%;object-fit:cover">
+        {% endif %}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;font-size:12px">
+        <span class="e-muted" style="text-transform:capitalize">{{ m.kind }}</span>
+        <form method="post" action="/admin/catalogue/{{ product.id }}/media/{{ m.id }}/delete"
+              onsubmit="return confirm('Delete this {{ m.kind }}?')">
+          <button class="danger" style="border:0;background:none;cursor:pointer;color:#7a1f2b;font:500 12px Inter,sans-serif">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="e-muted" style="font-size:14px;margin:0">No gallery media yet. Upload photos/videos above, or run AI enrichment to generate a cutout + studio shot.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,48 +1,126 @@
-{% extends "layout.njk" %}
-{% block title %}Contacts — WhatsApp Bot{% endblock %}
-{% block content %}
-<h1 class="text-lg font-semibold">Contacts</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contacts — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/contacts.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  </svg>
 
-{% if imported != null %}
-<div class="text-sm bg-emerald-50 text-emerald-800 rounded-lg p-3">
-  Imported {{ imported }} contact(s).
-  {% if invalid.length %}
-  <p class="text-red-700 mt-1">Skipped {{ invalid.length }} invalid line(s): {{ invalid | join(' · ') }}</p>
-  {% endif %}
-</div>
-{% endif %}
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+      {% include "_nav.njk" %}
+    </aside>
 
-<form method="post" action="/admin/contacts/import" class="bg-white rounded-xl shadow p-4 space-y-2">
-  <p class="text-sm font-medium">Import opted-in recipients (CSV)</p>
-  <textarea name="csv" rows="5" class="w-full border rounded-lg p-2 font-mono text-sm"
-            placeholder="phone,name&#10;0712345678,Alice&#10;0798765432,Bob"></textarea>
-  <p class="text-xs text-gray-500">
-    One per line: <span class="font-mono">phone[,name]</span>. Imported numbers are marked opted-in —
-    only import people who agreed to receive messages. Numbers that previously sent STOP keep their opt-out.
-  </p>
-  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-medium">Import</button>
-</form>
+    <main class="content">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><svg class="icon"><use href="#i-menu"/></svg></button>
 
-<div class="bg-white rounded-xl shadow overflow-x-auto">
-  <table class="w-full text-sm">
-    <thead class="text-left text-gray-500">
-      <tr class="border-b"><th class="p-3">Phone</th><th class="p-3">Name</th><th class="p-3">Opt-in</th><th class="p-3">Source</th></tr>
-    </thead>
-    <tbody class="divide-y">
-      {% for c in contacts %}
-      <tr>
-        <td class="p-3 font-mono">+{{ c.phone }}</td>
-        <td class="p-3">{{ c.name or '—' }}</td>
-        <td class="p-3">
-          {% if c.opted_in %}<span class="text-emerald-700">✓ in</span>
-          {% else %}<span class="text-red-600">✗ out</span>{% endif %}
-        </td>
-        <td class="p-3 text-gray-500">{{ c.opt_in_source or '—' }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="4" class="p-4 text-gray-500">No contacts yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endblock %}
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Bot</p>
+          <h1>Contacts</h1>
+          <p class="lede">Everyone your bot can message. People who reply STOP are never messaged.</p>
+        </div>
+        <button type="button" class="btn-primary" id="openAdd"><svg class="icon"><use href="#i-plus"/></svg>Add contacts</button>
+      </div>
+
+      <div class="stats" aria-label="Summary">
+        <div class="stat"><b id="sTotal">0</b><span>Contacts</span></div>
+        <div class="stat good"><b id="sIn">0</b><span>Can be messaged</span></div>
+        <div class="stat warn"><b id="sOut">0</b><span>Said STOP</span></div>
+        <div class="stat"><b id="sWeek">0</b><span>New this week</span></div>
+      </div>
+
+      <div class="toolbar">
+        <label class="search"><svg class="icon"><use href="#i-search"/></svg><input class="input" id="q" type="search" placeholder="Search by name or number" aria-label="Search contacts" /></label>
+        <div class="pills" role="group" aria-label="Filter by status" id="statusPills">
+          <button type="button" class="pill" data-status="all" aria-pressed="true">All</button>
+          <button type="button" class="pill" data-status="in" aria-pressed="false">Can message</button>
+          <button type="button" class="pill" data-status="out" aria-pressed="false">Said STOP</button>
+        </div>
+        <div class="pills" role="group" aria-label="Filter by how they were added" id="sourcePills">
+          <button type="button" class="pill" data-source="all" aria-pressed="true">Any source</button>
+          <button type="button" class="pill" data-source="inbound" aria-pressed="false">Messaged you</button>
+          <button type="button" class="pill" data-source="import" aria-pressed="false">Added by you</button>
+        </div>
+      </div>
+
+      <div class="list-card">
+        <div class="list-head" aria-hidden="true"><span>Name</span><span>Number</span><span>Messages</span><span>How they joined</span><span></span></div>
+        <div id="rows" role="list" aria-label="Contacts"></div>
+        <div class="empty" id="empty" hidden></div>
+        <div class="list-foot"><span id="showing"></span><button type="button" class="btn-outline" id="more" hidden>Show more</button></div>
+      </div>
+      <p class="note" id="sampleNote" hidden>Showing sample contacts. On the live site these come from your real list.</p>
+    </main>
+  </div>
+
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="addTitle" aria-hidden="true">
+    <div class="drawer-head">
+      <div><h2 id="addTitle">Add contacts</h2><p>Paste numbers from WhatsApp, Excel or your phone. We'll tidy them up and check each one.</p></div>
+      <button type="button" class="icon-btn" id="closeAdd" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+
+    <form id="importForm" method="post" action="/admin/contacts/import" class="drawer-body" novalidate>
+      <input type="hidden" name="csv" id="csvField" />
+      <section class="card">
+        <div class="tabs" role="tablist" aria-label="How to add">
+          <button type="button" class="tab" role="tab" id="tabPaste" aria-selected="true" aria-controls="panePaste">Type or paste</button>
+          <button type="button" class="tab" role="tab" id="tabFile" aria-selected="false" aria-controls="paneFile">Upload a file</button>
+        </div>
+        <div id="panePaste" role="tabpanel" aria-labelledby="tabPaste">
+          <label for="paste" class="hint" style="display:block;margin-bottom:6px">One person per line. Name and number in any order.</label>
+          <textarea class="input" id="paste" spellcheck="false" placeholder="Wanjiku 0712 345 678&#10;0722 111 222, Akinyi&#10;+254 733 444 555"></textarea>
+        </div>
+        <div id="paneFile" role="tabpanel" aria-labelledby="tabFile" hidden>
+          <label class="dropzone" id="dropzone">
+            <svg class="icon"><use href="#i-upload"/></svg>
+            <span id="fileText"><strong>Choose a file</strong> or drag it here</span>
+            <span class="hint">CSV from Excel or Google Sheets (File → Download → .csv)</span>
+            <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card" id="checkCard" hidden>
+        <h3>Check before adding</h3>
+        <div class="check-summary" id="checkSummary" style="margin-top:10px"></div>
+        <ul class="check-list" id="checkList"></ul>
+        <details class="tech" style="margin-top:12px"><summary>What gets sent</summary><pre id="csvOut"></pre></details>
+      </section>
+    </form>
+
+    <div class="drawer-foot">
+      <label class="consent"><input type="checkbox" id="consent" />
+        <span>These people <strong>agreed</strong> to get WhatsApp messages from Dress Nation. <span class="hint">Anyone who said STOP before stays opted out.</span></span></label>
+      <div class="row2">
+        <span class="hint" id="footHint">Paste some numbers to start.</span>
+        <button type="button" class="btn-primary" id="addBtn" disabled><svg class="icon"><use href="#i-plus"/></svg><span>Add contacts</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span></div>
+
+  <script>
+    window.CONTACTS = {{ contactsJson | safe }};
+    window.CONTACTS_FLASH = {{ flashJson | safe }};
+  </script>
+  <script src="/static/contacts.js"></script>
+</body>
+</html>

@@ -1,142 +1,459 @@
-{% extends "layout.njk" %}
-{% block title %}Status — WhatsApp Bot{% endblock %}
-{% block content %}
-<div class="flex items-center justify-between">
-  <h1 class="text-lg font-semibold">WhatsApp Status</h1>
-  <div class="flex gap-3 text-sm">
-    <a href="/admin/audiences" class="text-emerald-700 underline">Audiences</a>
-    <a href="/admin/media" class="text-emerald-700 underline">Media library</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WhatsApp Status — Dress Nation ~254</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Norican&family=Bebas+Neue&family=Oswald:wght@700&family=Caveat:wght@500&family=Roboto+Slab&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ivory:oklch(98.5% .006 80);--charcoal:oklch(24% .012 60);--wine:oklch(42% .115 18);
+      --olive:oklch(47% .07 130);--sand:oklch(93.5% .02 75);--stone:oklch(82% .022 70);
+      --background:var(--ivory);--foreground:var(--charcoal);--card:oklch(99.5% .003 80);
+      --accent:oklch(95.5% .015 75);--border:oklch(89% .018 72);--input:oklch(86% .02 72);
+      --muted-foreground:oklch(47% .02 60);--primary:var(--wine);--primary-foreground:var(--ivory);
+      --destructive:oklch(50% .16 30);--status:var(--olive);--status-soft:oklch(93% .035 125);
+      --info:oklch(48% .08 240);--info-soft:oklch(94% .025 240);--warn:oklch(55% .12 70);--warn-soft:oklch(95% .04 85);
+      --radius-field:18px;--radius-card:22px;
+      --shadow-soft:0 1px 2px oklch(24% .012 60 / .04),0 8px 24px -12px oklch(24% .012 60 / .18);
+      --shadow-lift:0 2px 4px oklch(24% .012 60 / .05),0 24px 48px -20px oklch(24% .012 60 / .28);
+      --ease-soft:cubic-bezier(.22,1,.36,1);--sidebar-w:248px;
+    }
+    *{box-sizing:border-box;margin:0}
+    body{font-family:"Jost",ui-sans-serif,system-ui,sans-serif;background:var(--background);color:var(--foreground);font-size:16px;line-height:1.5}
+    button,input,select,textarea{font:inherit;color:inherit}
+    .icon{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    [hidden]{display:none !important}
+    a{color:inherit}
+    .shell{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--sand);padding:28px 16px;display:flex;flex-direction:column;gap:2px}
+    .sidebar .brand{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;padding:0 12px 24px;text-decoration:none}
+    .sidebar .brand span{color:var(--muted-foreground);font-weight:300;letter-spacing:.04em}
+    .nav-group{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500;padding:20px 12px 6px;display:flex;align-items:center;cursor:pointer;list-style:none}
+    .nav-group::-webkit-details-marker{display:none}
+    .nav-root{display:flex;flex-direction:column;gap:2px}
+    .nav-grp{display:flex;flex-direction:column;gap:2px}
+    .nav-chev{margin-left:auto;width:13px;height:13px;flex:none;opacity:.6;transition:transform .2s var(--ease-soft)}
+    .nav-grp:not([open]) .nav-chev{transform:rotate(-90deg)}
+    .nav-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;font-size:15px;text-decoration:none;transition:background .2s var(--ease-soft)}
+    .nav-link:hover{background:color-mix(in oklch,var(--card) 70%,transparent)}
+    .nav-link[aria-current="page"]{background:var(--charcoal);color:var(--ivory)}
+    .nav-link .icon{width:16px;height:16px;opacity:.75}
+    .menu-btn{display:none}
+    .content{min-width:0;padding:40px 32px 64px}
+    .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .eyebrow{font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted-foreground);font-weight:500}
+    h1{font-size:36px;font-weight:300;letter-spacing:-.9px;line-height:1.2;margin-top:4px}
+    .lede{margin-top:6px;color:var(--muted-foreground)}
+    .head-links{display:flex;gap:8px}
+    .btn-outline{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--input);background:var(--card);font-size:14px;text-decoration:none;cursor:pointer;transition:background .2s var(--ease-soft)}
+    .btn-outline:hover{background:var(--accent)}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;margin-top:28px;align-items:start}
+    .form-col{display:flex;flex-direction:column;gap:24px;min-width:0}
+    .card{background:var(--card);border-radius:var(--radius-card);box-shadow:var(--shadow-soft);padding:24px}
+    .card h2{font-size:18px;font-weight:500}
+    .field{margin-top:18px;display:flex;flex-direction:column;gap:6px}
+    .field>label,.label{font-size:14px;font-weight:500}
+    .label-row{display:flex;justify-content:space-between;align-items:baseline}
+    .hint{font-size:12.5px;color:var(--muted-foreground)}
+    .counter{font-size:12.5px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+    .counter.over{color:var(--destructive);font-weight:500}
+    .error{font-size:12.5px;color:var(--destructive)}
+    .ok{font-size:12.5px;color:var(--status)}
+    .input,select.input,textarea.input{height:48px;padding:0 16px;width:100%;background:var(--card);border:1px solid var(--input);border-radius:var(--radius-field);transition:border-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft)}
+    select.input{appearance:none;padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23615a52' stroke-width='1.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:18px;cursor:pointer}
+    textarea.input{height:132px;padding:12px 16px;resize:vertical}
+    .input:focus{outline:none;border-color:var(--wine);box-shadow:0 0 0 3px color-mix(in oklch,var(--wine) 15%,transparent)}
+    .segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+    .seg-btn{height:48px;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--input);border-radius:var(--radius-field);font-size:14px;cursor:pointer;transition:all .2s var(--ease-soft)}
+    .seg-btn[aria-checked="true"]{background:var(--accent);border-color:var(--wine);font-weight:500}
+    .swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .swatch{width:34px;height:34px;border-radius:50%;border:0;cursor:pointer;box-shadow:inset 0 0 0 1px oklch(0% 0 0 / .08);transition:transform .2s var(--ease-soft)}
+    .swatch:hover{transform:scale(1.08)}
+    .swatch[aria-checked="true"]{outline:2px solid var(--charcoal);outline-offset:3px}
+    .swatch.custom{position:relative;overflow:hidden;background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red)}
+    .swatch.custom input{position:absolute;inset:-8px;width:60px;height:60px;opacity:0;cursor:pointer}
+    .fonts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .font-chip{height:48px;border-radius:14px;border:1px solid var(--input);background:var(--card);cursor:pointer;font-size:18px;line-height:1;transition:all .2s var(--ease-soft);overflow:hidden}
+    .font-chip small{display:block;font-family:"Jost",sans-serif;font-size:10px;letter-spacing:.08em;color:var(--muted-foreground);margin-top:3px;text-transform:uppercase}
+    .font-chip[aria-checked="true"]{border-color:var(--wine);background:var(--accent)}
+    .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin-top:6px}
+    .media-pick{position:relative;border:1px solid var(--input);border-radius:14px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:var(--sand);display:grid;place-items:center}
+    .media-pick img{width:100%;height:100%;object-fit:cover}
+    .media-pick .ic{color:var(--muted-foreground)}
+    .media-pick input{position:absolute;opacity:0;inset:0;cursor:pointer}
+    .media-pick:has(input:checked){border-color:var(--wine);box-shadow:0 0 0 2px color-mix(in oklch,var(--wine) 30%,transparent)}
+    .media-pick small{position:absolute;left:0;right:0;bottom:0;font-size:9px;background:rgba(0,0,0,.55);color:#fff;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .when{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+    .when-opt{position:relative;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--input);border-radius:var(--radius-field);cursor:pointer;transition:all .2s var(--ease-soft)}
+    .when-opt input{position:absolute;opacity:0}
+    .when-opt span{font-size:14px;font-weight:500}
+    .when-opt small{font-size:12.5px;color:var(--muted-foreground)}
+    .when-opt:has(input:checked){border-color:var(--wine);background:var(--accent)}
+    .when-input{margin-top:12px}
+    .form-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:24px;flex-wrap:wrap}
+    .form-actions .summary{font-size:14px;color:var(--muted-foreground)}
+    .btn-primary{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:500;letter-spacing:.375px;box-shadow:var(--shadow-soft);cursor:pointer;transition:opacity .2s,transform .2s var(--ease-soft)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+    .preview-col{position:sticky;top:24px}
+    .preview-col .label{display:block;margin-bottom:12px;font-size:15px}
+    .phone{width:100%;max-width:300px;margin:0 auto;aspect-ratio:9 / 19;border-radius:40px;padding:10px;background:var(--charcoal);box-shadow:var(--shadow-lift)}
+    .screen{position:relative;width:100%;height:100%;border-radius:31px;overflow:hidden;background:#3a3a3a;color:#fff;transition:background .3s var(--ease-soft)}
+    .progress{position:absolute;top:12px;left:12px;right:12px;height:2px;border-radius:2px;background:rgb(255 255 255 / .35);z-index:3;overflow:hidden}
+    .progress i{display:block;height:100%;width:40%;background:#fff}
+    .who{position:absolute;top:22px;left:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:3;font-size:13px}
+    .who .avatar{width:30px;height:30px;border-radius:50%;background:var(--wine);display:grid;place-items:center;font-size:12px;font-weight:600}
+    .who small{display:block;opacity:.75;font-size:11px}
+    .status-text{position:absolute;inset:70px 20px 70px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-wrap;overflow-wrap:anywhere;font-size:24px;line-height:1.25}
+    .status-text.placeholder{opacity:.55}
+    .status-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+    .status-caption{position:absolute;left:0;right:0;bottom:0;padding:40px 16px 24px;text-align:center;font-size:14px;background:linear-gradient(transparent,rgb(0 0 0 / .65));white-space:pre-wrap}
+    .preview-meta{margin-top:14px;text-align:center;font-size:13px;color:var(--muted-foreground)}
+    .history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .filters{display:flex;gap:6px}
+    .filter{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--input);background:var(--card);font-size:13px;cursor:pointer}
+    .filter[aria-pressed="true"]{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
+    .history{list-style:none;padding:0;margin-top:12px}
+    .item{display:grid;grid-template-columns:44px 1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)}
+    .item:first-child{border-top:0}
+    .thumb{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;overflow:hidden;color:#fff;font-size:11px;font-weight:500;background:var(--stone)}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .item .main{min-width:0}
+    .item .title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .item .when-txt{font-size:13px;color:var(--muted-foreground)}
+    .chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;line-height:16px;background:var(--accent);white-space:nowrap}
+    .chip.posted{background:var(--status-soft);color:var(--status)}
+    .chip.scheduled,.chip.daily{background:var(--info-soft);color:var(--info)}
+    .chip.failed{background:color-mix(in oklch,var(--destructive) 12%,var(--card));color:var(--destructive)}
+    .chip.expired{background:var(--sand);color:var(--muted-foreground)}
+    .chips{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .pager{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:16px}
+    .filter.on{background:var(--charcoal);color:var(--ivory);border-color:var(--charcoal)}
+    .icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--input);cursor:pointer;transition:all .2s var(--ease-soft)}
+    .icon-btn:hover{border-color:var(--destructive);color:var(--destructive)}
+    .empty{padding:28px;text-align:center;color:var(--muted-foreground);font-size:14px}
+    .banner{margin-top:20px;border-radius:14px;padding:12px 16px;font-size:14px}
+    .banner.ok{background:var(--status-soft);color:var(--status)}
+    .banner.err{background:color-mix(in oklch,var(--destructive) 10%,var(--card));color:var(--destructive)}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;display:flex;gap:14px;align-items:center;background:var(--charcoal);color:var(--ivory);padding:10px 18px;border-radius:999px;font-size:14px;transition:all .3s var(--ease-soft);pointer-events:none;z-index:60}
+    .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+    @media (max-width:1120px){.layout{grid-template-columns:1fr}.preview-col{position:static;order:-1}.phone{max-width:240px}}
+    @media (max-width:860px){.shell{grid-template-columns:1fr}.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:50;transform:translateX(-100%);transition:transform .3s var(--ease-soft);box-shadow:var(--shadow-lift)}.sidebar.open{transform:none}.menu-btn{display:inline-grid;place-items:center;width:40px;height:40px;margin-bottom:16px;border-radius:50%;border:1px solid var(--input);background:var(--card);cursor:pointer}.content{padding:24px 16px 48px}}
+    @media (max-width:560px){h1{font-size:30px}.when,.segmented{grid-template-columns:1fr}.fonts{grid-template-columns:repeat(2,1fr)}.item{grid-template-columns:44px 1fr auto}}
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6V4h16v2M12 4v16M9 20h6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-4v12l-6-4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Admin navigation">
+      <a class="brand" href="/admin">Dress Nation <span>~254</span></a>
+      {% include "_nav.njk" %}
+    </aside>
+
+    <main class="content">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><svg class="icon"><use href="#i-menu"/></svg></button>
+
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Bot</p>
+          <h1>WhatsApp Status</h1>
+          <p class="lede">Post a status to your contacts now, later, or every day.</p>
+        </div>
+        <div class="head-links">
+          <a class="btn-outline" href="/admin/audiences"><svg class="icon"><use href="#i-users"/></svg>Audiences</a>
+          <a class="btn-outline" href="/admin/media"><svg class="icon"><use href="#i-folder"/></svg>Media library</a>
+        </div>
+      </div>
+
+      {% if error %}<div class="banner err" role="alert">{{ error }}</div>{% endif %}
+      {% if queued %}<div class="banner ok" role="status">{{ queued }} ✓</div>{% endif %}
+
+      <div class="layout">
+        <form class="form-col" id="statusForm" method="post" action="/admin/status" novalidate>
+          <input type="hidden" name="statusType" id="statusType" value="text">
+          <input type="hidden" name="backgroundColor" id="bgInput" value="#5CB08E">
+          <input type="hidden" name="font" id="fontInput" value="0">
+          <input type="hidden" name="mediaId" id="mediaIdInput" value="">
+
+          <!-- Content -->
+          <section class="card">
+            <h2>Content</h2>
+            <div class="segmented" role="radiogroup" aria-label="Status type">
+              <button type="button" class="seg-btn" role="radio" data-type="text" aria-checked="true"><svg class="icon"><use href="#i-text"/></svg>Text</button>
+              <button type="button" class="seg-btn" role="radio" data-type="image" aria-checked="false"><svg class="icon"><use href="#i-image"/></svg>Image</button>
+              <button type="button" class="seg-btn" role="radio" data-type="video" aria-checked="false"><svg class="icon"><use href="#i-video"/></svg>Video</button>
+            </div>
+
+            <!-- Text -->
+            <div id="textGroup">
+              <div class="field">
+                <div class="label-row"><label for="text">Text</label><span class="counter" id="textCount">0 / 700</span></div>
+                <textarea class="input" id="text" name="text" placeholder="New arrivals just dropped ✨ Tap to shop the Christmas edit"></textarea>
+              </div>
+              <div class="field">
+                <span class="label" id="bgLabel">Background colour</span>
+                <div class="swatches" role="radiogroup" aria-labelledby="bgLabel" id="swatches"></div>
+              </div>
+              <div class="field">
+                <span class="label" id="fontLabel">Font</span>
+                <div class="fonts" role="radiogroup" aria-labelledby="fontLabel" id="fonts"></div>
+              </div>
+            </div>
+
+            <!-- Media (from the media library) -->
+            <div id="mediaGroup" hidden>
+              <div class="field">
+                <span class="label" id="mediaLabel">Choose from the media library</span>
+                {% if media.length %}
+                <div class="media-grid" id="mediaGrid">
+                  {% for m in media %}
+                  <label class="media-pick" title="{{ m.name }} ({{ m.mimetype }})">
+                    <input type="radio" name="mediaPick" value="{{ m.id }}" data-mime="{{ m.mimetype }}">
+                    {% if 'image/' in m.mimetype %}<img src="/shop/media/{{ m.id }}" alt="">{% else %}<svg class="icon ic"><use href="#i-video"/></svg>{% endif %}
+                    <small>{{ m.name }}</small>
+                  </label>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <p class="hint">No media yet — add files in the <a href="/admin/media" style="color:var(--wine)">Media library</a>.</p>
+                {% endif %}
+              </div>
+              <div class="field">
+                <label for="fileUrl">…or a file URL</label>
+                <input class="input" id="fileUrl" name="fileUrl" placeholder="https://…/promo.jpg">
+              </div>
+              <div class="field">
+                <div class="label-row"><label for="caption">Caption (optional)</label><span class="counter" id="capCount">0 / 700</span></div>
+                <textarea class="input" id="caption" name="caption" style="height:88px" placeholder="Shown under the photo or video"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <!-- Audience + schedule -->
+          <section class="card">
+            <h2>Audience &amp; timing</h2>
+            <div class="field">
+              <label for="audience">Audience</label>
+              <select class="input" id="audience" name="audienceId">
+                <option value="" data-count="all">All contacts (default)</option>
+                {% for a in audiences %}<option value="{{ a.id }}" data-count="{{ a.member_count }}">{{ a.name }} ({{ a.member_count }} contacts)</option>{% endfor %}
+              </select>
+              <span class="hint" id="audienceHint">Everyone in your contact list</span>
+            </div>
+
+            <div class="when" role="radiogroup" aria-label="When to post">
+              <label class="when-opt"><input type="radio" name="scheduleKind" value="now" checked /><span>Post now</span><small>Goes out immediately</small></label>
+              <label class="when-opt"><input type="radio" name="scheduleKind" value="once" /><span>Once at</span><small>Pick a date &amp; time</small></label>
+              <label class="when-opt"><input type="radio" name="scheduleKind" value="daily" /><span>Daily at</span><small>Repeats every day</small></label>
+            </div>
+            <div class="when-input" id="onceWrap" hidden><input class="input" type="datetime-local" id="onceAt" name="onceAt" aria-label="Post date and time (Nairobi)" /></div>
+            <div class="when-input" id="dailyWrap" hidden><input class="input" type="time" id="dailyAt" name="dailyTime" value="09:00" aria-label="Daily time (Nairobi)" /></div>
+            <span class="error" id="whenError" hidden></span>
+
+            <div class="form-actions">
+              <span class="summary" id="summary">Text status to all contacts, now.</span>
+              <button type="submit" class="btn-primary" id="postBtn"><svg class="icon"><use href="#i-send"/></svg><span>Post status</span></button>
+            </div>
+          </section>
+
+          <!-- History -->
+          <section class="card">
+            <div class="history-head">
+              <h2>History</h2>
+            </div>
+            <ul class="history" id="history">
+              {# scheduled & recurring definitions first #}
+              {% for d in definitions %}
+              <li class="item" data-group="scheduled">
+                <span class="thumb"><svg class="icon"><use href="#i-{{ 'video' if d.status_type == 'video' else ('image' if d.status_type == 'image' else 'text') }}"/></svg></span>
+                <div class="main">
+                  <div class="title">{{ d.status_type | capitalize }} status</div>
+                  <div class="when-txt">{% if d.schedule_kind == 'daily' %}Every day · cron {{ d.cron }}{% else %}Once · {{ d.scheduled_at | dtshort }}{% endif %}</div>
+                </div>
+                <span class="chip {{ 'daily' if d.schedule_kind == 'daily' else 'scheduled' }}">{{ 'Daily' if d.schedule_kind == 'daily' else 'Scheduled' }}</span>
+                <form method="post" action="/admin/status/definitions/{{ d.id }}/cancel"><button type="submit" class="icon-btn" title="Cancel" aria-label="Cancel status"><svg class="icon"><use href="#i-trash"/></svg></button></form>
+              </li>
+              {% endfor %}
+              {# posted / failed history #}
+              {% for h in history %}
+              <li class="item">
+                <span class="thumb" style="{% if h.payload.input.type == 'text' and h.payload.input.backgroundColor %}background:{{ h.payload.input.backgroundColor }}{% endif %}">{% if h._thumb %}<img src="{{ h._thumb }}" alt="">{% elif h.payload.input.type == 'text' %}Aa{% else %}<svg class="icon"><use href="#i-{{ 'video' if h.payload.input.type == 'video' else 'image' }}"/></svg>{% endif %}</span>
+                <div class="main">
+                  <div class="title">{% if h.payload.input.caption %}{{ h.payload.input.caption }}{% elif h.payload.input.text %}{{ h.payload.input.text }}{% else %}{{ h.payload.input.type | capitalize }} status{% endif %}</div>
+                  <div class="when-txt">{{ h.payload.input.type | capitalize }} · {{ h.created_at | dtshort }}{% if h.error %} · <span style="color:var(--destructive)">{{ h.error | truncate(50) }}</span>{% endif %}</div>
+                </div>
+                <span class="chips">
+                  <span class="chip {{ 'failed' if h.status == 'failed' else 'posted' }}">{{ 'Failed' if h.status == 'failed' else 'Posted' }}</span>
+                  {% if h._expired and h.status != 'failed' %}<span class="chip expired">Expired</span>{% endif %}
+                </span>
+                {% if h.waha_message_id %}
+                <form method="post" action="/admin/status/delete"><input type="hidden" name="sendId" value="{{ h.id }}"><button type="submit" class="icon-btn" title="Delete" aria-label="Delete status"><svg class="icon"><use href="#i-trash"/></svg></button></form>
+                {% else %}<span></span>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% if not definitions.length and not history.length %}<p class="empty">Nothing here yet.</p>{% endif %}
+            {% if histTotalPages > 1 %}
+            <div class="pager">
+              {% if histPage > 1 %}<a href="/admin/status?page={{ histPage - 1 }}" class="filter">← Prev</a>{% endif %}
+              {% for n in range(1, histTotalPages + 1) %}
+              <a href="/admin/status?page={{ n }}" class="filter {{ 'on' if n == histPage }}">{{ n }}</a>
+              {% endfor %}
+              {% if histPage < histTotalPages %}<a href="/admin/status?page={{ histPage + 1 }}" class="filter">Next →</a>{% endif %}
+            </div>
+            {% endif %}
+            <p class="hint" style="text-align:center;margin-top:10px">{% if histTotal %}{{ histTotal }} status{{ 'es' if histTotal != 1 }}{% if histTotalPages > 1 %} · page {{ histPage }} of {{ histTotalPages }}{% endif %}{% endif %}</p>
+          </section>
+        </form>
+
+        <!-- Preview -->
+        <aside class="preview-col" aria-label="Status preview">
+          <span class="label">Preview</span>
+          <div class="phone">
+            <div class="screen" id="screen">
+              <div class="progress"><i></i></div>
+              <div class="who"><span class="avatar">DN</span><div>Dress Nation<small id="previewWhen">now</small></div></div>
+              <div class="status-text placeholder" id="previewText">Your status text</div>
+              <img class="status-media" id="previewImg" alt="" hidden />
+              <div class="status-caption" id="previewCaption" hidden></div>
+            </div>
+          </div>
+          <p class="preview-meta" id="previewMeta">Text · 0 characters</p>
+        </aside>
+      </div>
+    </main>
   </div>
-</div>
-{% if error %}<p class="text-sm text-red-700 bg-red-50 rounded-lg p-2">{{ error }}</p>{% endif %}
-{% if queued %}<p class="text-sm text-emerald-800 bg-emerald-50 rounded-lg p-2">{{ queued }} ✓</p>{% endif %}
 
-<form method="post" action="/admin/status" class="bg-white rounded-xl shadow p-4 space-y-3 text-sm">
-  <label class="block">
-    Type
-    <select name="statusType" id="statusType" class="mt-1 w-full border rounded-lg px-3 py-2"
-            onchange="document.querySelectorAll('[data-status-section]').forEach(e => e.style.display = (e.dataset.statusSection.split(',').includes(this.value)) ? '' : 'none'); document.getElementById('preview-box').style.display = this.value === 'text' ? '' : 'none';">
-      <option value="text">text</option>
-      <option value="image">image</option>
-      <option value="video">video</option>
-      <option value="voice">voice</option>
-    </select>
-  </label>
+  <div class="toast" id="toast" role="status" aria-live="polite"><span></span></div>
 
-  <div data-status-section="text">
-    <label class="block">
-      Text
-      <textarea name="text" rows="3" class="mt-1 w-full border rounded-lg p-2"
-                oninput="document.getElementById('preview-text').textContent = this.value"></textarea>
-    </label>
-  </div>
+  <script>
+  (() => {
+    "use strict";
+    const $ = s => document.querySelector(s);
+    const $$ = s => [...document.querySelectorAll(s)];
+    const TZ = "Africa/Nairobi", MAX = 700;
+    const COLORS = ["#2E7D62","#5CB08E","#7A2E3A","#C2185B","#8E24AA","#3949AB","#0288D1","#F4511E","#F9A825","#37474F"];
+    const FONTS = [
+      { name:"Sans", css:"'Jost', sans-serif" }, { name:"Serif", css:"'Roboto Slab', serif" },
+      { name:"Script", css:"'Norican', cursive" }, { name:"Hand", css:"'Caveat', cursive" },
+      { name:"Bold", css:"'Bebas Neue', sans-serif" }, { name:"Heavy", css:"'Oswald', sans-serif" },
+    ];
+    const state = { type:"text", color:"#5CB08E", font:0, filter:"all" };
+    const cap = s => s[0].toUpperCase() + s.slice(1);
+    const fmt = d => d.toLocaleString("en-GB",{ timeZone:TZ, weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
 
-  <div data-status-section="image,video,voice" style="display:none" class="space-y-3">
-    <label class="block">
-      Media library item
-      <select name="mediaId" class="mt-1 w-full border rounded-lg px-3 py-2">
-        <option value="">— none, use URL below —</option>
-        {% for m in media %}
-        <option value="{{ m.id }}">#{{ m.id }} {{ m.name }} ({{ m.mimetype }})</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="block">
-      …or file URL
-      <input name="fileUrl" placeholder="https://…/promo.jpg" class="mt-1 w-full border rounded-lg px-3 py-2">
-    </label>
-    <label class="block" data-status-section="image">
-      Caption
-      <input name="caption" class="mt-1 w-full border rounded-lg px-3 py-2">
-    </label>
-  </div>
+    // Swatches
+    const sw = $("#swatches");
+    sw.innerHTML = COLORS.map(c => `<button type="button" class="swatch" role="radio" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-checked="${c===state.color}"></button>`).join("")
+      + `<label class="swatch custom" title="Custom colour"><input type="color" id="customColor" aria-label="Custom colour" value="${state.color}"></label>`;
+    sw.addEventListener("click", e => { const b = e.target.closest("[data-color]"); if (b) setColor(b.dataset.color); });
+    $("#customColor").addEventListener("input", e => setColor(e.target.value));
+    function setColor(c){ state.color = c; $("#bgInput").value = c; $$(".swatch[data-color]").forEach(s => s.setAttribute("aria-checked", String(s.dataset.color.toLowerCase()===c.toLowerCase()))); render(); }
 
-  <div class="grid grid-cols-2 gap-3">
-    <label class="block">
-      Background color
-      <input name="backgroundColor" type="color" value="#38b48e" class="mt-1 w-full border rounded-lg h-10"
-             oninput="document.getElementById('preview-box').style.backgroundColor = this.value">
-    </label>
-    <label class="block">
-      Font (text statuses, 0–5)
-      <input name="font" type="number" min="0" max="5" placeholder="0" class="mt-1 w-full border rounded-lg px-3 py-2">
-    </label>
-  </div>
+    // Fonts
+    $("#fonts").innerHTML = FONTS.map((f,i) => `<button type="button" class="font-chip" role="radio" data-font="${i}" aria-checked="${i===state.font}" style="font-family:${f.css}">Aa<small>${f.name} · ${i}</small></button>`).join("");
+    $("#fonts").addEventListener("click", e => { const b = e.target.closest("[data-font]"); if (!b) return; state.font = Number(b.dataset.font); $("#fontInput").value = state.font; $$(".font-chip").forEach(c => c.setAttribute("aria-checked", String(c===b))); render(); });
 
-  <div id="preview-box" class="rounded-xl p-6 text-center text-white text-lg font-medium min-h-[90px]"
-       style="background-color:#38b48e">
-    <span id="preview-text">Preview</span>
-  </div>
+    // Type toggle
+    $$(".seg-btn").forEach(b => b.addEventListener("click", () => {
+      if (state.type === b.dataset.type) return;
+      state.type = b.dataset.type; $("#statusType").value = state.type;
+      $$(".seg-btn").forEach(x => x.setAttribute("aria-checked", String(x===b)));
+      $("#textGroup").hidden = state.type !== "text";
+      $("#mediaGroup").hidden = state.type === "text";
+      render();
+    }));
 
-  <label class="block">
-    Audience
-    <select name="audienceId" class="mt-1 w-full border rounded-lg px-3 py-2">
-      <option value="">All contacts (default)</option>
-      {% for a in audiences %}
-      <option value="{{ a.id }}">{{ a.name }} ({{ a.member_count }} contacts)</option>
-      {% endfor %}
-    </select>
-  </label>
+    // Media picker
+    const mediaGrid = $("#mediaGrid");
+    if (mediaGrid) mediaGrid.addEventListener("change", e => {
+      const r = e.target.closest("input[name=mediaPick]"); if (!r) return;
+      $("#mediaIdInput").value = r.value; $("#fileUrl").value = ""; render();
+    });
+    $("#fileUrl").addEventListener("input", () => { if ($("#fileUrl").value.trim()) { $("#mediaIdInput").value = ""; $$("input[name=mediaPick]").forEach(r => r.checked = false); } render(); });
 
-  <fieldset class="space-y-2">
-    <label class="flex items-center gap-2"><input type="radio" name="scheduleKind" value="now" checked> Post now</label>
-    <label class="flex items-center gap-2">
-      <input type="radio" name="scheduleKind" value="once"> Once at
-      <input name="onceAt" type="datetime-local" class="border rounded-lg px-2 py-1">
-    </label>
-    <label class="flex items-center gap-2">
-      <input type="radio" name="scheduleKind" value="daily"> Daily at
-      <input name="dailyTime" type="time" class="border rounded-lg px-2 py-1">
-    </label>
-  </fieldset>
+    // Audience hint
+    $("#audience").addEventListener("change", () => {
+      const o = $("#audience").selectedOptions[0], c = o.dataset.count;
+      $("#audienceHint").textContent = c === "all" ? "Everyone in your contact list" : `About ${c} contacts`;
+      render();
+    });
 
-  <button class="bg-emerald-700 text-white rounded-lg px-4 py-2 font-medium">Post status</button>
-</form>
+    // Schedule
+    const nairobiNow = (addMin=0) => new Date(Date.now() + addMin*60e3 + 3*3600e3).toISOString().slice(0,16);
+    $("#onceAt").min = nairobiNow(); $("#onceAt").value = nairobiNow(60);
+    $$('input[name="scheduleKind"]').forEach(r => r.addEventListener("change", () => {
+      const w = whenVal(); $("#onceWrap").hidden = w!=="once"; $("#dailyWrap").hidden = w!=="daily"; render();
+    }));
+    ["#onceAt","#dailyAt","#text","#caption"].forEach(s => $(s).addEventListener("input", render));
+    const whenVal = () => $('input[name="scheduleKind"]:checked').value;
 
-{% if definitions.length %}
-<div class="bg-white rounded-xl shadow p-4">
-  <h2 class="font-semibold mb-2">Scheduled & recurring</h2>
-  <ul class="divide-y text-sm">
-    {% for d in definitions %}
-    <li class="py-2 flex items-center justify-between gap-2">
-      <span>
-        <span class="font-mono">{{ d.status_type }}</span>
-        {% if d.schedule_kind == 'daily' %} · daily (cron {{ d.cron }})
-        {% else %} · once at {{ d.scheduled_at }}{% endif %}
-      </span>
-      <form method="post" action="/admin/status/definitions/{{ d.id }}/cancel">
-        <button class="text-xs border rounded px-2 py-1 text-red-600 hover:bg-red-50">cancel</button>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
+    function setCounter(sel,n){ const el=$(sel); el.textContent=`${n} / ${MAX}`; el.classList.toggle("over", n>MAX); }
 
-<div class="bg-white rounded-xl shadow p-4">
-  <h2 class="font-semibold mb-2">History</h2>
-  <ul class="divide-y text-sm">
-    {% for h in history %}
-    <li class="py-2 flex items-center justify-between gap-2">
-      <span>
-        <span class="text-gray-500 text-xs">{{ h.created_at }}</span>
-        · <span class="font-mono">{{ h.payload.input.type }}</span>
-        {% if h.payload.input.text %} · {{ h.payload.input.text | truncate(40) }}{% endif %}
-        · <span class="text-xs px-2 py-0.5 rounded-full
-            {% if h.status == 'failed' %}bg-red-100 text-red-800{% else %}bg-emerald-100 text-emerald-800{% endif %}">
-            {{ h.status }}</span>
-        {% if h.error %}<span class="text-xs text-red-600">{{ h.error | truncate(60) }}</span>{% endif %}
-      </span>
-      {% if h.waha_message_id %}
-      <form method="post" action="/admin/status/delete">
-        <input type="hidden" name="sendId" value="{{ h.id }}">
-        <button class="text-xs border rounded px-2 py-1 text-red-600 hover:bg-red-50">delete</button>
-      </form>
-      {% endif %}
-    </li>
-    {% else %}
-    <li class="py-2 text-gray-500">No statuses posted yet.</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endblock %}
+    function render(){
+      const text = $("#text").value, caption = $("#caption").value;
+      const screen=$("#screen"), pT=$("#previewText"), pI=$("#previewImg"), pC=$("#previewCaption");
+      setCounter("#textCount", text.length); setCounter("#capCount", caption.length);
+
+      if (state.type === "text") {
+        screen.style.background = state.color;
+        pT.hidden=false; pI.hidden=true; pC.hidden=true;
+        pT.textContent = text || "Your status text"; pT.classList.toggle("placeholder", !text);
+        pT.style.fontFamily = FONTS[state.font].css;
+        pT.style.fontSize = text.length>300?"15px":text.length>140?"18px":text.length>60?"21px":"26px";
+        $("#previewMeta").textContent = `Text · ${FONTS[state.font].name} font (${state.font}) · ${text.length} characters`;
+      } else {
+        screen.style.background = "#000";
+        const mid = $("#mediaIdInput").value, url = $("#fileUrl").value.trim();
+        const src = mid ? `/shop/media/${mid}` : (url || "");
+        const showImg = src && (state.type === "image" || mid);
+        pT.hidden = !!src; pT.textContent = `Add ${state.type==="image"?"an image":"a video"}`; pT.classList.add("placeholder"); pT.style.fontFamily="";
+        pI.hidden = !showImg; if (showImg && pI.getAttribute("src") !== src) pI.src = src;
+        pC.hidden = !caption; pC.textContent = caption;
+        $("#previewMeta").textContent = src ? `${cap(state.type)} · selected` : "No file yet";
+      }
+
+      const w = whenVal(); let whenText="now", err="";
+      if (w === "once") { const v=$("#onceAt").value; if(!v) err="Pick a date and time."; else if(new Date(`${v}:00+03:00`)<=new Date()) err="That time has already passed."; else whenText=fmt(new Date(`${v}:00+03:00`)); }
+      if (w === "daily") { const v=$("#dailyAt").value; if(!v) err="Pick a time."; else whenText=`every day at ${v}`; }
+      $("#whenError").textContent=err; $("#whenError").hidden=!err;
+      $("#previewWhen").textContent = w==="now"?"now":whenText;
+
+      const aud = $("#audience").selectedOptions[0].textContent.replace(" (default)","").toLowerCase();
+      $("#summary").textContent = `${cap(state.type)} status to ${aud}, ${w==="now"?"now":whenText}.`;
+      $("#postBtn").querySelector("span").textContent = w==="now"?"Post status":"Schedule status";
+
+      let ok = !err;
+      if (state.type === "text") ok = ok && text.trim().length>0 && text.length<=MAX;
+      else ok = ok && (!!$("#mediaIdInput").value || !!$("#fileUrl").value.trim()) && caption.length<=MAX;
+      $("#postBtn").disabled = !ok;
+    }
+
+    // Mobile sidebar
+    const sb=$("#sidebar"), mb=$("#menuBtn");
+    mb.addEventListener("click", () => mb.setAttribute("aria-expanded", String(sb.classList.toggle("open"))));
+    document.addEventListener("click", e => { if (sb.classList.contains("open") && !sb.contains(e.target) && !mb.contains(e.target)) { sb.classList.remove("open"); mb.setAttribute("aria-expanded","false"); } });
+
+    // Server message → toast
+    (function(){ const m = {{ (queued or error or '') | dump | safe }}; if (m) { const t=$("#toast"); t.querySelector("span").textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); } })();
+
+    render();
+  })();
+  </script>
+</body>
+</html>
+{# standalone editorial page with its own sidebar (per spec); not layout.njk #}

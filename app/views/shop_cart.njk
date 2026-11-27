@@ -1,0 +1,54 @@
+{% extends "shop_layout.njk" %}
+{% block title %}Your bag — {{ brand.name }} {{ brand.suffix }}{% endblock %}
+{% block content %}
+<section class="wrap" style="padding:28px 24px 72px" id="bag">
+  <h1 style="font-size:clamp(32px,5vw,44px)">Your <span style="color:var(--accent)">bag</span></h1>
+  {% if error %}<p style="margin-top:12px;color:#7a1f2b;background:#f7ece9;border-radius:10px;padding:12px 14px;font-size:14px">{{ error }}</p>{% endif %}
+
+  {% if items.length %}
+  <div style="display:flex;flex-wrap:wrap;gap:32px;margin-top:20px;border:1px solid var(--ink);border-radius:16px;padding:28px">
+    <div style="flex:999 1 420px;min-width:0">
+      {% for p in items %}
+      <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)">
+        <a href="/shop/p/{{ p.id }}" style="width:64px;height:84px;border-radius:10px;overflow:hidden;background:var(--panel);flex:none">
+          <img src="/shop/img/{{ p.id }}" alt="" style="width:100%;height:100%;object-fit:cover">
+        </a>
+        <div style="flex:1 1 auto;min-width:0">
+          <div style="font-size:16px">{{ p.name }}</div>
+          <div class="muted" style="font-size:13px">{% if p.size %}Size {{ p.size }} · {% endif %}{{ p.priceFmt }}</div>
+        </div>
+        <form method="post" action="/shop/cart/remove">
+          <input type="hidden" name="productId" value="{{ p.id }}">
+          <button class="muted" style="background:none;border:0;cursor:pointer;font-size:12px;letter-spacing:.08em;text-transform:uppercase">Remove</button>
+        </form>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:16px">
+        <span>Total ({{ items.length }} item{{ 's' if items.length != 1 }})</span>
+        <span class="pricetag" style="font-size:26px">{{ totalFmt }}</span>
+      </div>
+      <p class="muted" style="margin:8px 0 0;font-size:13px">Delivery fee depends on your town — the shop confirms it. No refunds / no exchanges.</p>
+    </div>
+
+    <form method="post" action="/shop/checkout" style="flex:1 1 300px;display:flex;flex-direction:column;gap:12px">
+      <h3 style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:600">Delivery details</h3>
+      <label class="field"><span>Your name</span><input name="name" required></label>
+      <label class="field"><span>Phone (we'll WhatsApp your tracking code)</span><input name="phone" placeholder="07XX XXX XXX" required></label>
+      <label class="field"><span>Town / area</span><input name="town" placeholder="e.g. Nairobi, Roysambu" required></label>
+      <label class="field"><span>Delivery option</span>
+        <select name="deliveryOption">
+          <option value="agent">Pickup Mtaani agent (cheapest)</option>
+          <option value="doorstep">Doorstep (rider to your door)</option>
+          <option value="errand">Upcountry via SACCO / courier</option>
+        </select>
+      </label>
+      <label class="field"><span>Nearest agent / address / SACCO</span><input name="deliveryLocation" required></label>
+      <button class="btn btn-dark" style="width:100%;padding:16px">Continue to payment</button>
+      {% if waLink %}<a href="{{ waLink }}" class="btn btn-wa" style="width:100%">Or order on WhatsApp</a>{% endif %}
+    </form>
+  </div>
+  {% else %}
+  <p class="muted" style="margin-top:16px;font-size:16px">Nothing yet. <a href="/shop#shop" style="color:var(--accent)">Add a dress from the drop →</a></p>
+  {% endif %}
+</section>
+{% endblock %}

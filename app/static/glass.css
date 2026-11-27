@@ -1,0 +1,166 @@
+/* ============================================================
+   WhatsApp Bot admin — "Glass Storefront" theme
+   Linked from app/views/layout.njk (admin pages only).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --bg-0:#0b1120;
+  --glass:rgba(255,255,255,.08);
+  --glass-strong:rgba(255,255,255,.14);
+  --glass-border:rgba(255,255,255,.16);
+  --text:#e8edf7;
+  --muted:#94a3b8;
+  --brand:#10b981;          /* emerald — keeps the WhatsApp identity */
+  --brand-2:#22d3ee;        /* cyan accent */
+  --accent:#f472b6;         /* pink for sale / promo moments */
+  --radius:18px;
+  --blur:18px;
+}
+
+/* ---------- Canvas: deep gradient with soft colour blobs ---------- */
+body.bg-gray-100{
+  font-family:'Plus Jakarta Sans',system-ui,sans-serif !important;
+  color:var(--text);
+  background:
+    radial-gradient(600px 400px at 10% -5%, rgba(16,185,129,.35), transparent 60%),
+    radial-gradient(500px 380px at 95% 10%, rgba(34,211,238,.25), transparent 60%),
+    radial-gradient(600px 500px at 50% 110%, rgba(244,114,182,.22), transparent 60%),
+    var(--bg-0) !important;
+  background-attachment:fixed !important;
+}
+
+/* ---------- Top bar: frosted, sticky, pill links ---------- */
+nav.bg-emerald-700{
+  position:sticky; top:0; z-index:50;
+  background:rgba(11,17,32,.55) !important;
+  backdrop-filter:blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(160%);
+  border-bottom:1px solid var(--glass-border);
+}
+nav > div{ overflow-x:auto; flex-wrap:nowrap !important; scrollbar-width:none; }
+nav > div::-webkit-scrollbar{ display:none; }
+nav > div{ column-gap:.25rem !important; }
+nav form button, nav button{
+  padding:.35rem .9rem; border-radius:999px !important; white-space:nowrap;
+  background:var(--glass); border:1px solid var(--glass-border);
+  text-decoration:none !important; font-size:.85rem; margin-left:.5rem;
+}
+nav form button:hover, nav button:hover{ background:rgba(244,63,94,.25); }
+nav a.font-semibold{
+  font-weight:800; letter-spacing:-.02em; white-space:nowrap;
+  background:linear-gradient(90deg,var(--brand),var(--brand-2));
+  -webkit-background-clip:text; background-clip:text; color:transparent !important;
+}
+nav a.text-sm{
+  white-space:nowrap; padding:.35rem .8rem; border-radius:999px;
+  color:#cbd5e1 !important; transition:all .2s;
+}
+nav a.text-sm:hover{ background:var(--glass-strong); color:#fff !important; text-decoration:none !important; }
+nav a.text-sm[aria-current="page"], nav a.text-sm.active{
+  background:linear-gradient(135deg,rgba(16,185,129,.35),rgba(34,211,238,.25));
+  color:#fff !important; box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);
+}
+
+/* ---------- Glass cards ---------- */
+.bg-white{
+  background:var(--glass) !important;
+  backdrop-filter:blur(var(--blur)) saturate(150%);
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(150%);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius) !important;
+  box-shadow:0 10px 30px -10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12) !important;
+  color:var(--text);
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s;
+}
+main .bg-white:hover{
+  transform:translateY(-2px);
+  border-color:rgba(255,255,255,.28);
+  box-shadow:0 18px 40px -12px rgba(16,185,129,.35), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+h1,h2,h3{ color:#fff; letter-spacing:-.02em; }
+main > h1, main > div > h1{ font-size:1.6rem; font-weight:800; }
+.text-gray-500,.text-gray-400,.text-gray-600{ color:var(--muted) !important; }
+
+/* Dashboard stat tiles: big gradient numbers */
+p.text-2xl{
+  font-size:2rem !important; font-weight:800 !important;
+  background:linear-gradient(135deg,#fff,var(--brand-2));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* ---------- Product images (catalogue / orders) ---------- */
+main img{
+  border-radius:14px !important;
+  box-shadow:0 8px 20px -8px rgba(0,0,0,.6);
+  transition:transform .3s ease;
+}
+main img:hover{ transform:scale(1.04); }
+main img.w-24{ width:7rem !important; height:7rem !important; }
+
+/* ---------- Buttons ---------- */
+button, a.rounded-lg, a[class*="bg-emerald"]{
+  border-radius:12px !important; font-weight:600; transition:all .2s;
+}
+[class*="bg-emerald-6"],[class*="bg-emerald-7"]{
+  background:linear-gradient(135deg,var(--brand),#059669) !important;
+  border:none !important; color:#fff !important;
+  box-shadow:0 6px 18px -6px rgba(16,185,129,.7);
+}
+[class*="bg-emerald-6"]:hover,[class*="bg-emerald-7"]:hover{ filter:brightness(1.1); transform:translateY(-1px); }
+[class*="bg-rose-6"],[class*="bg-red-6"],[class*="bg-pink-6"]{
+  background:linear-gradient(135deg,#f43f5e,var(--accent)) !important;
+  border:none !important; color:#fff !important;
+  box-shadow:0 6px 18px -6px rgba(244,63,94,.7);
+}
+button.border, button[class*="border"]:not([class*="bg-"]){
+  background:var(--glass) !important; border:1px solid var(--glass-border) !important; color:var(--text) !important;
+}
+button.border:hover{ background:var(--glass-strong) !important; }
+[class*="text-red"],[class*="text-rose"]{ color:#fb7185 !important; }
+
+/* ---------- Inputs ---------- */
+input,textarea,select{
+  background:rgba(255,255,255,.06) !important;
+  border:1px solid var(--glass-border) !important;
+  color:var(--text) !important; border-radius:12px !important;
+}
+input::placeholder,textarea::placeholder{ color:#64748b !important; }
+input:focus,textarea:focus,select:focus{
+  outline:none !important; border-color:var(--brand) !important;
+  box-shadow:0 0 0 3px rgba(16,185,129,.25) !important;
+}
+select option{ background:#0f172a; }
+
+/* ---------- Status pills / badges ---------- */
+span.rounded-full,[class*="rounded-full"][class*="px-2"]{
+  backdrop-filter:blur(8px); font-weight:600; letter-spacing:.01em;
+  border:1px solid rgba(255,255,255,.12);
+}
+[class*="bg-emerald-100"]{ background:rgba(16,185,129,.18) !important; color:#6ee7b7 !important; }
+[class*="bg-amber-100"],[class*="bg-yellow-100"]{ background:rgba(245,158,11,.18) !important; color:#fcd34d !important; }
+[class*="bg-rose-100"],[class*="bg-red-100"],[class*="bg-pink-100"]{ background:rgba(244,63,94,.18) !important; color:#fda4af !important; }
+[class*="bg-gray-100"]:not(body),[class*="bg-gray-200"],[class*="bg-slate-100"]{ background:rgba(148,163,184,.16) !important; color:#cbd5e1 !important; }
+[class*="bg-sky-100"],[class*="bg-blue-100"]{ background:rgba(56,189,248,.18) !important; color:#7dd3fc !important; }
+
+/* Filter chips on catalogue (All / Needs review / Draft …) */
+a.rounded-full{ background:var(--glass); border:1px solid var(--glass-border); color:var(--text) !important; }
+a.rounded-full[class*="bg-emerald"]{ color:#fff !important; }
+
+/* ---------- Tables (contacts, templates) ---------- */
+table{ border-collapse:separate !important; border-spacing:0; width:100%; }
+th{ color:var(--muted) !important; font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; }
+td,th{ border-color:rgba(255,255,255,.08) !important; }
+tbody tr{ transition:background .15s; }
+tbody tr:hover{ background:rgba(255,255,255,.05); }
+.font-mono{ color:#a5f3fc; }
+
+/* Recent-errors list on dashboard */
+li.border-l-4{ background:rgba(245,158,11,.08); border-radius:0 10px 10px 0; padding:.5rem .75rem !important; }
+
+/* Links */
+main a:not([class*="bg-"]):not(.rounded-full){ color:var(--brand-2); }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion:reduce){ *{ transition:none !important; transform:none !important; } }

@@ -1,0 +1,23 @@
+# Production override for the legacyhomes server (used with -f on top of the
+# base compose). Joins the app to the existing `staging_default` network so
+# the staging Caddy can reverse_proxy to it by name, without touching any
+# other service. Stable container names make the Caddy target + DB host
+# unambiguous across the two networks the app sits on.
+services:
+  app:
+    container_name: dressnation_app
+    networks:
+      - default
+      - edge
+  postgres:
+    container_name: dressnation_postgres
+  waha:
+    container_name: dressnation_waha
+  s3:
+    container_name: dressnation_s3
+
+networks:
+  default:
+  edge:
+    name: staging_default
+    external: true

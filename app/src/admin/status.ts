@@ -19,21 +19,37 @@ import { deleteMedia, listMedia, readMediaContent, saveMedia } from '../modules/
 import type { StatusInput } from '../modules/status/payload.js'
 import { requireWebAuth } from './auth.js'
 
-async function statusPageData() {
-  const [audiences, media, definitions, history] = await Promise.all([
+// WhatsApp statuses disappear 24h after posting.
+const STATUS_TTL_MS = 24 * 3600 * 1000
+
+async function statusPageData(page = 1) {
+  const [audiences, media, definitions, hist] = await Promise.all([
     listAudiences(),
     listMedia(),
     listStatusDefinitions(),
-    listStatusHistory(),
+    listStatusHistory(page),
   ])
-  return { audiences, media, definitions, history }
+  const now = Date.now()
+  const history = hist.rows.map((h) => {
+    const input = h.payload?.input
+    const thumb = input?.media_id
+      ? `/shop/media/${input.media_id}`
+      : input?.file?.url ?? null
+    return {
+      ...h,
+      _thumb: thumb,
+      _expired: now - new Date(h.created_at).getTime() > STATUS_TTL_MS,
+    }
+  })
+  return { audiences, media, definitions, history, histPage: hist.page, histTotalPages: hist.totalPages, histTotal: hist.total }
 }
 
 export const adminStatusRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireWebAuth)
 
-  app.get('/admin/status', async (_req, reply) => {
-    return reply.view('status.njk', { authed: true, ...(await statusPageData()), error: null, queued: null })
+  app.get<{ Querystring: { page?: string } }>('/admin/status', async (req, reply) => {
+    const page = Number(req.query.page) || 1
+    return reply.view('status.njk', { authed: true, ...(await statusPageData(page)), error: null, queued: null })
   })
 
   app.post('/admin/status', async (req, reply) => {

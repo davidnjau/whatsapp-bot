@@ -1,0 +1,204 @@
+{% extends "layout.njk" %}
+{% block title %}Dresses — Dress Nation Admin{% endblock %}
+{% block content %}
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px">
+  <div>
+    <p class="e-eyebrow" style="margin:0 0 8px">Shop</p>
+    <h1 class="e-h1" style="margin:0">Dresses</h1>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <form method="post" action="/admin/catalogue/hide-sold" title="Toggle whether sold dresses appear on the public shop">
+      <button class="e-pill {{ 'on' if hideSold }}">{{ 'Sold: hidden on shop' if hideSold else 'Sold: shown on shop' }}</button>
+    </form>
+    <form method="post" action="/admin/catalogue/publish-all"
+          onsubmit="return confirm('Publish all reviewed drafts to WhatsApp Status and the shop?')">
+      <button class="e-btn e-btn-dark">Publish all</button>
+    </form>
+  </div>
+</div>
+
+<form method="post" action="/admin/catalogue/upload" enctype="multipart/form-data"
+      class="e-card" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:16px">
+  <div style="flex:1 1 240px;min-width:0">
+    <label style="font-size:14px;font-weight:500">Upload dress photos</label>
+    <input type="file" name="photos" accept="image/*" multiple required style="margin-top:6px;display:block;width:100%;font-size:14px">
+    <p class="e-muted" style="font-size:12px;margin:6px 0 0">Each photo is scanned (size &amp; price) and added as a draft. Star the ones you want spinning in the shop's fitting room.</p>
+  </div>
+  <button class="e-btn e-btn-olive">Upload &amp; scan</button>
+</form>
+
+{% if message %}<p class="e-tag" style="display:block;background:var(--panel);padding:12px 14px;border-radius:10px;font-size:14px;text-transform:none;letter-spacing:0;margin-bottom:16px">{{ message }}</p>{% endif %}
+{% if scan %}
+<div style="background:var(--panel);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:16px">
+  Imported {{ scan.imported.length }}, skipped {{ scan.skipped }} already-seen file(s).
+  {% if scan.failed.length %}<ul style="color:#7a1f2b;margin:6px 0 0">{% for f in scan.failed %}<li>{{ f.file }}: {{ f.error }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}
+
+{% if awaiting.length %}
+<style>
+  .enrich-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(43,39,36,.85);color:#fff;font-size:12px;font-weight:500;padding:6px 11px;border-radius:999px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .enrich-dot{width:7px;height:7px;border-radius:50%;background:#f3c14b;animation:enrichPulse 1s ease-in-out infinite}
+  @keyframes enrichPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+  .enrich-spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;display:inline-block;animation:enrichSpin .8s linear infinite}
+  @keyframes enrichSpin{to{transform:rotate(360deg)}}
+</style>
+<div class="e-card" style="margin-bottom:20px">
+  <div style="margin-bottom:12px">
+    <h2 style="margin:0;font-size:18px;font-weight:500">✨ Awaiting AI enrichment ({{ awaiting.length }})</h2>
+    {% if enrichingCount %}
+    <p class="e-muted" style="font-size:13px;margin:6px 0 0;display:flex;align-items:center;gap:8px">
+      <span class="enrich-spin"></span> Enriching {{ enrichingCount }} photo{{ 's' if enrichingCount != 1 }}… up to a minute or two each. This page refreshes on its own.
+    </p>
+    {% else %}
+    <p class="e-muted" style="font-size:13px;margin:4px 0 0">Tick the photos to enrich with AI, or exclude ones you'll handle by hand.{% if not ingestConfigured %} <span style="color:#7a1f2b">AI worker not configured yet.</span>{% endif %}</p>
+    {% endif %}
+  </div>
+  <form method="post" action="/admin/catalogue/enrich-batch">
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      {% for p in awaiting %}
+      <div style="width:116px">
+        <label style="display:block;position:relative;cursor:{{ 'default' if p.enriching else 'pointer' }}">
+          {% if p.enriching %}
+          <span class="enrich-badge"><span class="enrich-dot"></span>Enriching…</span>
+          {% else %}
+          <input type="checkbox" name="ids" value="{{ p.id }}" checked
+                 style="position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:1;accent-color:var(--accent)">
+          {% endif %}
+          <img src="/shop/img/{{ p.id }}" alt=""
+               style="width:116px;height:150px;object-fit:cover;border-radius:10px;background:var(--panel);display:block{{ ';opacity:.5' if p.enriching }}">
+        </label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px">
+          <span class="e-muted" style="font-size:12px">#{{ p.id }}{% if p.size %} · {{ p.size }}{% endif %}</span>
+          {% if not p.enriching %}
+          <button type="submit" formaction="/admin/catalogue/{{ p.id }}/skip-ai" formnovalidate
+                  title="Exclude from AI" style="background:none;border:0;cursor:pointer;color:var(--muted);text-decoration:underline;font-size:12px">exclude</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if not enrichingCount %}
+    <div style="margin-top:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:13px">
+      <span class="e-muted">Enrich:</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="both" checked style="accent-color:var(--accent)"> Images + text</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="images" style="accent-color:var(--accent)"> Images only</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="mode" value="text" style="accent-color:var(--accent)"> Text only</label>
+    </div>
+    {% endif %}
+    <div style="margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <button class="e-btn e-btn-olive"{% if enrichingCount %} disabled style="opacity:.5;cursor:not-allowed"{% endif %}
+              onclick="var b=this;setTimeout(function(){b.disabled=true;b.textContent='⏳ Queuing…'},0)">✨ Enrich selected with AI</button>
+      {% if not enrichingCount %}
+      <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=true});return false" class="e-muted" style="font-size:13px">Select all</a>
+      <a href="#" onclick="document.querySelectorAll('input[name=ids]').forEach(function(c){c.checked=false});return false" class="e-muted" style="font-size:13px">Select none</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% if enrichingCount %}<script>setTimeout(function(){location.reload()},5000)</script>{% endif %}
+{% endif %}
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+  {% for f in [
+    { key: 'all', label: 'All' },
+    { key: 'needs_review', label: 'Needs review' },
+    { key: 'draft', label: 'Draft' },
+    { key: 'published', label: 'Published' },
+    { key: 'sold', label: 'Sold' }
+  ] %}
+  <a href="/admin/catalogue?filter={{ f.key }}{% if since != 'all' %}&since={{ since }}{% endif %}{% if search %}&q={{ search | urlencode }}{% endif %}" class="e-pill {{ 'on' if filter == f.key }}">
+    {{ f.label }}{% if counts[f.key] %} ({{ counts[f.key] }}){% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px">
+  <form method="get" action="/admin/catalogue" style="display:flex;gap:8px;flex:1 1 260px;min-width:0">
+    <input type="hidden" name="filter" value="{{ filter }}">
+    <input type="hidden" name="since" value="{{ since }}">
+    <input name="q" value="{{ search }}" placeholder="Search title or #id" class="e-input" style="flex:1 1 auto;min-width:0">
+    <button class="e-btn">Search</button>
+    {% if search %}<a href="/admin/catalogue?filter={{ filter }}&since={{ since }}" class="e-btn">Clear</a>{% endif %}
+  </form>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+  {% for s in [
+    { k: 'all', l: 'Any time' }, { k: '1w', l: '1 week' }, { k: '2w', l: '2 weeks' },
+    { k: '3w', l: '3 weeks' }, { k: '4w', l: '4 weeks' }, { k: '1mo', l: '1 month' }, { k: 'older', l: 'Over a month' }
+  ] %}
+  <a href="/admin/catalogue?filter={{ filter }}&since={{ s.k }}{% if search %}&q={{ search | urlencode }}{% endif %}"
+     class="e-pill {{ 'on' if since == s.k }}" style="min-height:32px;font-size:12px">{{ s.l }}</a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+  {% for p in products %}
+  <div class="e-card dn-row" style="display:flex;gap:14px;padding:14px;align-items:flex-start">
+    <a href="/shop/img/{{ p.id }}" target="_blank" title="View full photo" style="flex:none">
+      <img src="/shop/img/{{ p.id }}" style="width:84px;height:112px;object-fit:cover;border-radius:10px;background:var(--panel)" alt="">
+    </a>
+    <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-weight:500">#{{ p.id }}</span>
+        <span class="e-tag" style="
+          {% if p.status == 'published' %}background:var(--accent);color:#fff
+          {% elif p.status == 'sold' %}background:var(--ink);color:#fff
+          {% else %}background:var(--panel);color:var(--ink){% endif %}">{{ p.status }}</span>
+        {% if p.needs_review %}<span class="e-tag" style="background:#f3dcd3;color:#7a1f2b">needs review</span>{% endif %}
+        {% if p.ai_ingested_at %}<span class="e-tag" style="background:#eef0e4;color:var(--accent)">✨ AI</span>{% endif %}
+        <span class="e-muted" style="font-size:12px">{{ p.created_at | date }}</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <form method="post" action="/admin/catalogue/{{ p.id }}/featured?filter={{ filter }}">
+            <input type="hidden" name="featured" value="{{ 'off' if p.featured else 'on' }}">
+            <button class="dn-icon {{ 'on' if p.featured }}" title="{{ 'In fitting room' if p.featured else 'Add to fitting room' }}" aria-label="Toggle fitting room">★</button>
+          </form>
+          <form method="post" action="/admin/catalogue/{{ p.id }}/ingest">
+            <button class="dn-icon {{ 'ai' if p.ai_ingested_at }}" title="{{ 'Re-run AI' if p.ai_ingested_at else 'Enrich with AI' }}" aria-label="Enrich with AI">✨</button>
+          </form>
+          <div class="dn-kebab">
+            <button class="dn-icon" aria-haspopup="true" aria-label="More actions">⋯</button>
+            <div class="dn-menu">
+              <a href="/admin/catalogue/{{ p.id }}/edit">Edit details{% if p.ai_ingested_at %} ✓{% endif %}</a>
+              {% if p.status == 'draft' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button>Publish (status + shop)</button></form>
+              {% elif p.status == 'published' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/publish"><button>Repost status</button></form>
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/sold"><button>Mark sold</button></form>
+              {% elif p.status == 'sold' %}
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/published"><button>Back to shop</button></form>
+              {% endif %}
+              <a href="/shop/p/{{ p.id }}" target="_blank">View on shop ↗</a>
+              <form method="post" action="/admin/catalogue/{{ p.id }}/status/archived" onsubmit="return confirm('Archive this dress?')"><button class="danger">Archive</button></form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form method="post" action="/admin/catalogue/{{ p.id }}?filter={{ filter }}" class="dn-edit" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input name="title" value="{{ p.title or '' }}" placeholder="Dress #{{ p.id }}" class="e-input" style="flex:1 1 180px;min-width:120px">
+        <input name="size" value="{{ p.size or '' }}" placeholder="size" class="e-input" style="width:76px">
+        <input name="price" value="{{ p.price_ksh or 1000 }}" placeholder="Ksh" class="e-input" style="width:88px">
+        <button class="dn-icon" title="Save title / size / price" aria-label="Save">✓</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="e-muted e-card" style="font-size:14px">
+    {% if filter == 'all' %}Nothing yet — upload dress photos above to get started.
+    {% else %}No dresses in “{{ filter }}”.{% endif %}
+  </p>
+  {% endfor %}
+</div>
+
+{% if totalPages > 1 %}
+{% set base = '/admin/catalogue?filter=' + filter + '&since=' + since + ('&q=' + (search | urlencode) if search else '') %}
+<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:24px">
+  {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}" class="e-pill" style="min-height:36px">← Prev</a>{% endif %}
+  {% for n in range(1, totalPages + 1) %}
+  <a href="{{ base }}&page={{ n }}" class="e-pill {{ 'on' if n == page }}" style="min-height:36px;min-width:42px;justify-content:center">{{ n }}</a>
+  {% endfor %}
+  {% if page < totalPages %}<a href="{{ base }}&page={{ page + 1 }}" class="e-pill" style="min-height:36px">Next →</a>{% endif %}
+</div>
+{% endif %}
+<p class="e-muted" style="text-align:center;font-size:12px;margin-top:10px">{{ total }} dress(es){% if totalPages > 1 %} · page {{ page }} of {{ totalPages }}{% endif %}</p>
+{% endblock %}

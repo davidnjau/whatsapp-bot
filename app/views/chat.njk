@@ -1,38 +1,5 @@
 {% extends "layout.njk" %}
-{% block title %}Chat — WhatsApp Bot{% endblock %}
+{% block title %}Chat — Dress Nation Admin{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between">
-  <div>
-    <a href="/admin/chats" class="text-sm text-emerald-700 underline">← All chats</a>
-    <h1 class="text-lg font-semibold">
-      {{ contact.name if contact and contact.name else chat.chat_id.replace('@c.us', '') }}
-    </h1>
-    <p class="text-sm text-gray-500">
-      +{{ contact.phone if contact else chat.chat_id.replace('@c.us', '') }}
-      {% if contact and not contact.opted_in %} · <span class="text-red-600">opted out</span>{% endif %}
-    </p>
-  </div>
-  <form method="post"
-        action="/admin/chats/{{ chat.chat_id | urlencode }}/{{ 'resume' if chat.bot_paused else 'pause' }}">
-    <button class="text-sm rounded-lg px-3 py-2 border
-      {% if chat.bot_paused %}bg-emerald-700 text-white{% else %}hover:bg-gray-50{% endif %}">
-      {{ 'Resume bot' if chat.bot_paused else 'Pause bot' }}
-    </button>
-  </form>
-</div>
-
-<div class="bg-white rounded-xl shadow p-4 space-y-2">
-  {% for m in messages %}
-  <div class="flex {{ 'justify-end' if m.from_me else 'justify-start' }}">
-    <div class="max-w-[80%] rounded-xl px-3 py-2 text-sm
-      {{ 'bg-emerald-100' if m.from_me else 'bg-gray-100' }}">
-      {% if m.type == 'media' %}<span class="text-gray-500">📎 media</span>{% endif %}
-      <p class="whitespace-pre-wrap">{{ m.body or '' }}</p>
-      <p class="text-[10px] text-gray-400 mt-1">{{ m.created_at }}</p>
-    </div>
-  </div>
-  {% else %}
-  <p class="text-sm text-gray-500">No messages.</p>
-  {% endfor %}
-</div>
+{{ body | safe }}
 {% endblock %}
