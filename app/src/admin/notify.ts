@@ -49,15 +49,30 @@ export const adminNotifyRoutes: FastifyPluginAsync = async (app) => {
   })
 
   // --- send one ---
+  const esc = (s: string) => s.replace(/</g, '\\u003c')
+  // Data the friendly Notify SPA needs: templates, the recent log, and a flash.
+  async function notifyData(flash: { type: 'ok' | 'err'; text: string } | null) {
+    const [templates, log] = await Promise.all([listTemplates(), listNotifications({})])
+    const templatesJson = esc(JSON.stringify(templates.map((t) => ({ id: t.name, body: t.body }))))
+    const logJson = esc(
+      JSON.stringify(
+        log.slice(0, 5).map((n) => ({
+          phone: (n.chat_id ?? '').replace(/@.*$/, ''),
+          template: n.template_name ?? '',
+          status: n.status ?? 'queued',
+          scheduled: n.scheduled_at ? new Date(n.scheduled_at).getTime() : null,
+          at: new Date(n.created_at).getTime(),
+        })),
+      ),
+    )
+    return { templatesJson, logJson, flashJson: esc(JSON.stringify(flash)) }
+  }
+
   app.get('/admin/notify', async (_req, reply) => {
-    const templates = await listTemplates()
-    return reply.view('notify_send.njk', {
-      authed: true, templates, error: null, result: null, form: {},
-    })
+    return reply.view('notify_send.njk', { authed: true, ...(await notifyData(null)) })
   })
 
   app.post('/admin/notify', async (req, reply) => {
-    const templates = await listTemplates()
     const form = z
       .object({
         phone: z.string(),
@@ -75,11 +90,13 @@ export const adminNotifyRoutes: FastifyPluginAsync = async (app) => {
       }
       const sendAt = form.sendAt ? new Date(form.sendAt) : undefined
       if (sendAt && Number.isNaN(sendAt.getTime())) throw new NotifyError(400, 'Invalid send time')
-      const result = await createNotification({ phone: form.phone, template: form.template, variables, sendAt })
-      return reply.view('notify_send.njk', { authed: true, templates, error: null, result, form })
+      await createNotification({ phone: form.phone, template: form.template, variables, sendAt })
+      const name = typeof variables.name === 'string' ? variables.name : ''
+      const text = sendAt ? 'Message scheduled' : `Message queued${name ? ` for ${name}` : ''}`
+      return reply.view('notify_send.njk', { authed: true, ...(await notifyData({ type: 'ok', text })) })
     } catch (err) {
       const message = err instanceof NotifyError ? err.message : (err as Error).message
-      return reply.view('notify_send.njk', { authed: true, templates, error: message, result: null, form })
+      return reply.view('notify_send.njk', { authed: true, ...(await notifyData({ type: 'err', text: message })) })
     }
   })
 
@@ -100,12 +117,33 @@ export const adminNotifyRoutes: FastifyPluginAsync = async (app) => {
   )
 
   // --- contacts + CSV import ---
-  app.get('/admin/contacts', async (_req, reply) => {
-    const contacts = await query(
-      `SELECT chat_id, phone, name, opted_in, opt_in_source, created_at
-       FROM contacts ORDER BY created_at DESC LIMIT 200`,
+  async function contactsData(flash: { type: 'ok' | 'err'; text: string } | null) {
+    const res = await query<{
+      phone: string
+      name: string | null
+      opted_in: boolean
+      opt_in_source: string | null
+      created_at: Date
+    }>(
+      `SELECT phone, name, opted_in, opt_in_source, created_at
+       FROM contacts ORDER BY created_at DESC LIMIT 2000`,
     )
-    return reply.view('contacts.njk', { authed: true, contacts: contacts.rows, imported: null, invalid: [] })
+    const contactsJson = esc(
+      JSON.stringify(
+        res.rows.map((c) => ({
+          phone: `+${c.phone}`,
+          name: c.name ?? '',
+          optIn: c.opted_in,
+          source: c.opt_in_source ?? '',
+          added: new Date(c.created_at).getTime(),
+        })),
+      ),
+    )
+    return { contactsJson, flashJson: esc(JSON.stringify(flash)) }
+  }
+
+  app.get('/admin/contacts', async (_req, reply) => {
+    return reply.view('contacts.njk', { authed: true, ...(await contactsData(null)) })
   })
 
   app.post('/admin/contacts/import', async (req, reply) => {
@@ -121,12 +159,9 @@ export const adminNotifyRoutes: FastifyPluginAsync = async (app) => {
         [c.chatId, c.phone, c.name],
       )
     }
-    const contacts = await query(
-      `SELECT chat_id, phone, name, opted_in, opt_in_source, created_at
-       FROM contacts ORDER BY created_at DESC LIMIT 200`,
-    )
-    return reply.view('contacts.njk', {
-      authed: true, contacts: contacts.rows, imported: valid.length, invalid,
-    })
+    const text =
+      `Added ${valid.length} contact${valid.length === 1 ? '' : 's'}` +
+      (invalid.length ? ` · skipped ${invalid.length} invalid line(s)` : '')
+    return reply.view('contacts.njk', { authed: true, ...(await contactsData({ type: 'ok', text })) })
   })
 }
